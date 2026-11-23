@@ -154,7 +154,17 @@
   function login() {
     showError('loginError', '');
     firebase.auth().signInWithEmailAndPassword($('email').value.trim(), $('password').value)
-      .catch(function () { showError('loginError', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'); });
+      .catch(function (e) {
+        var code = (e && e.code) || '';
+        var msg = 'เข้าสู่ระบบไม่สำเร็จ';
+        if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') msg = 'อีเมลหรือรหัสผ่านไม่ตรงกับบัญชีใน Firebase';
+        else if (code === 'auth/invalid-email') msg = 'รูปแบบอีเมลไม่ถูกต้อง';
+        else if (code === 'auth/operation-not-allowed') msg = 'ยังไม่ได้เปิด Email/Password ใน Firebase';
+        else if (code === 'auth/too-many-requests') msg = 'ลองผิดหลายครั้งเกินไป รอสักครู่แล้วลองใหม่';
+        else if (code === 'auth/network-request-failed') msg = 'เชื่อมต่อ Firebase ไม่ได้ ตรวจอินเทอร์เน็ต';
+        else if (code.indexOf('api-key') !== -1) msg = 'ค่า apiKey ใน quiz-config.js ไม่ถูกต้อง';
+        showError('loginError', msg + ' [' + (code || (e && e.message) || 'ไม่ทราบสาเหตุ') + ']');
+      });
   }
   $('loginBtn').addEventListener('click', login);
   $('password').addEventListener('keydown', function (e) { if (e.key === 'Enter') login(); });
@@ -174,8 +184,11 @@
       db.ref('.info/serverTimeOffset').on('value', function (x) { offset = x.val() || 0; });
       buildTabs();
       selectBranch(bKey);
-    }).catch(function () {
-      showError('loginError', 'บัญชีนี้ยังไม่ได้รับสิทธิ์ผู้ดูแล เพิ่ม UID ของบัญชีใน /admins ที่ Firebase ก่อน (UID: ' + user.uid + ')');
+    }).catch(function (e) {
+      var denied = e && /permission/i.test(String(e.code || e.message));
+      showError('loginError', denied
+        ? 'เข้าสู่ระบบได้ แต่ฐานข้อมูลไม่ให้อ่าน: ยังไม่ได้วางกฎจาก database.rules.json ในแท็บ Rules แล้วกด Publish'
+        : 'เข้าสู่ระบบได้ แต่บัญชีนี้ยังไม่มีสิทธิ์ผู้ดูแล: ในฐานข้อมูลต้องมี admins > ' + user.uid + ' มีค่า true (ไม่มีเครื่องหมายคำพูด)');
       $('login').hidden = false; $('app').hidden = true;
     });
   });
