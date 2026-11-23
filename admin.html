@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>ผู้ดูแล: ตอบคำถามท้ายคลิป</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;600;700&family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="quiz.css">
+</head>
+<body>
+<div class="wrap wide">
+  <header class="topbar">
+    <h1>หน้าผู้ดูแล</h1>
+    <div class="row">
+      <span class="muted" id="who"></span>
+      <button class="btn ghost" id="logoutBtn" hidden>ออกจากระบบ</button>
+    </div>
+  </header>
+
+  <!-- เข้าสู่ระบบ -->
+  <section class="panel" id="login" hidden style="max-width:460px">
+    <h2>เข้าสู่ระบบผู้ดูแล</h2>
+    <label for="email">อีเมล</label>
+    <input type="email" id="email" autocomplete="username">
+    <label for="password" style="margin-top:12px">รหัสผ่าน</label>
+    <input type="password" id="password" autocomplete="current-password">
+    <div class="row" style="margin-top:16px">
+      <button class="btn" id="loginBtn">เข้าสู่ระบบ</button>
+    </div>
+    <div class="error" id="loginError" hidden></div>
+  </section>
+
+  <!-- แผงควบคุม -->
+  <section id="app" hidden>
+    <div class="tabs" id="tabs" role="tablist"></div>
+
+    <div class="grid">
+      <div>
+        <div class="panel">
+          <div class="row" style="justify-content:space-between">
+            <h2 id="bTitle" style="margin:0"></h2>
+            <span class="phase" id="phase"></span>
+          </div>
+          <p id="question" style="font-weight:600; margin:12px 0 0"></p>
+
+          <div class="stats">
+            <div class="stat"><b id="sJoined">0</b><span>เข้าร่วม</span></div>
+            <div class="stat"><b id="sEnded">0</b><span>ดูคลิปจบแล้ว</span></div>
+            <div class="stat"><b id="sAnswered">0</b><span>ตอบแล้ว</span></div>
+          </div>
+
+          <div class="timer" id="timer" hidden>
+            <div class="num" id="timerNum"></div>
+            <div class="track"><div class="fill" id="timerFill"></div></div>
+          </div>
+
+          <div id="bars"></div>
+        </div>
+
+        <div class="panel">
+          <h2>ควบคุมรอบนี้</h2>
+          <div class="row">
+            <button class="btn" id="startBtn">เปิดรับคำตอบ</button>
+            <button class="btn ghost" id="closeBtn">ปิดรับคำตอบ</button>
+            <button class="btn ghost" id="revealBtn">เฉลย</button>
+            <button class="btn danger" id="resetBtn">เริ่มรอบใหม่</button>
+          </div>
+          <div class="row" style="margin-top:16px">
+            <div style="flex:1; min-width:160px">
+              <label for="correctSel">ข้อที่ถูก</label>
+              <select id="correctSel"></select>
+            </div>
+            <div style="flex:1; min-width:160px">
+              <label for="secondsSel">เวลาตอบ</label>
+              <select id="secondsSel">
+                <option value="10">10 วินาที</option>
+                <option value="20">20 วินาที</option>
+                <option value="30">30 วินาที</option>
+                <option value="60">60 วินาที</option>
+              </select>
+            </div>
+          </div>
+          <div class="error" id="ctrlError" hidden></div>
+          <p class="muted" style="margin:14px 0 4px">ลิงก์สำหรับผู้ชมของสาขานี้</p>
+          <div class="link" id="viewerLink"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>คะแนน</h2>
+        <p class="muted" id="boardHint"></p>
+        <table class="board">
+          <thead><tr><th>อันดับ</th><th>ชื่อ</th><th>ตอบ</th><th class="n">คะแนน</th></tr></thead>
+          <tbody id="boardBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <div class="error" id="fatal" hidden></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="quiz-config.js"></script>
+<script>
+(function () {
+  var cfg = window.QUIZ_CONFIG;
+  var $ = function (id) { return document.getElementById(id); };
+  var keys = Object.keys(cfg.branches);
+  var bKey = keys[0];
+  var db, offset = 0, refs = [];
+  var session = { phase: 'waiting' }, players = {}, answers = {}, correct = null;
+  var PHASE_LABEL = { waiting: 'รอเริ่ม', open: 'กำลังรับคำตอบ', closed: 'ปิดรับคำตอบแล้ว', reveal: 'เฉลยแล้ว' };
+
+  function now() { return Date.now() + offset; }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function showError(id, msg) { $(id).textContent = msg; $(id).hidden = !msg; }
+
+  try {
+    firebase.initializeApp(cfg.firebase);
+    db = firebase.database();
+  } catch (e) {
+    showError('fatal', 'เชื่อมต่อระบบไม่ได้ ตรวจค่า firebase ในไฟล์ quiz-config.js');
+    return;
+  }
+
+  // ---------- เข้าสู่ระบบ ----------
+  function login() {
+    showError('loginError', '');
+    firebase.auth().signInWithEmailAndPassword($('email').value.trim(), $('password').value)
+      .catch(function () { showError('loginError', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'); });
+  }
+  $('loginBtn').addEventListener('click', login);
+  $('password').addEventListener('keydown', function (e) { if (e.key === 'Enter') login(); });
+  $('logoutBtn').addEventListener('click', function () { firebase.auth().signOut(); });
+
+  firebase.auth().onAuthStateChanged(function (user) {
+    detach();
+    if (!user || user.isAnonymous) {
+      $('login').hidden = false; $('app').hidden = true; $('logoutBtn').hidden = true; $('who').textContent = '';
+      return;
+    }
+    db.ref('admins/' + user.uid).once('value').then(function (s) {
+      if (s.val() !== true) throw new Error('not-admin');
+      $('login').hidden = true; $('app').hidden = false; $('logoutBtn').hidden = false;
+      $('who').textContent = user.email;
+      db.ref('.info/serverTimeOffset').on('value', function (x) { offset = x.val() || 0; });
+      buildTabs();
+      selectBranch(bKey);
+    }).catch(function () {
+      showError('loginError', 'บัญชีนี้ยังไม่ได้รับสิทธิ์ผู้ดูแล เพิ่ม UID ของบัญชีใน /admins ที่ Firebase ก่อน (UID: ' + user.uid + ')');
+      $('login').hidden = false; $('app').hidden = true;
+    });
+  });
+
+  // ---------- เลือกสาขา ----------
+  function buildTabs() {
+    $('tabs').innerHTML = '';
+    keys.forEach(function (k) {
+      var b = el('button', 'tab', k);
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.dataset.k = k;
+      b.addEventListener('click', function () { selectBranch(k); });
+      $('tabs').appendChild(b);
+    });
+  }
+
+  function detach() {
+    refs.forEach(function (r) { r.off(); });
+    refs = [];
+  }
+
+  function listen(path, cb) {
+    var r = db.ref(path);
+    r.on('value', function (s) { cb(s.val()); render(); });
+    refs.push(r);
+  }
+
+  function selectBranch(k) {
+    detach();
+    bKey = k;
+    session = { phase: 'waiting' }; players = {}; answers = {}; correct = null;
+    Array.prototype.forEach.call($('tabs').children, function (b) {
+      b.setAttribute('aria-selected', b.dataset.k === k ? 'true' : 'false');
+    });
+    var br = cfg.branches[k];
+    $('bTitle').textContent = k + ' ' + br.name;
+    $('question').textContent = br.question;
+    $('viewerLink').textContent = new URL('index.html?b=' + k, location.href).href;
+
+    var sel = $('correctSel');
+    sel.innerHTML = '';
+    sel.appendChild(new Option('ยังไม่ได้ตั้ง', ''));
+    br.options.forEach(function (o) { sel.appendChild(new Option('ข้อ ' + o.key, o.key)); });
+    $('secondsSel').value = String(cfg.answerSeconds);
+    if (!$('secondsSel').value) $('secondsSel').value = '20';
+    showError('ctrlError', '');
+
+    listen('sessions/' + k, function (v) { session = v || { phase: 'waiting' }; });
+    listen('players/' + k, function (v) { players = v || {}; });
+    listen('answers/' + k, function (v) { answers = v || {}; });
+    listen('private/' + k + '/correct', function (v) { correct = v || null; $('correctSel').value = correct || ''; });
+    render();
+  }
+
+  // ---------- ปุ่มควบคุม ----------
+  function fail(e) { showError('ctrlError', 'บันทึกไม่สำเร็จ: ' + (e && e.message ? e.message : 'ตรวจการเชื่อมต่อ')); }
+
+  $('correctSel').addEventListener('change', function () {
+    db.ref('private/' + bKey + '/correct').set($('correctSel').value || null).catch(fail);
+  });
+
+  $('startBtn').addEventListener('click', function () {
+    showError('ctrlError', '');
+    db.ref('sessions/' + bKey).set({
+      phase: 'open',
+      openedAt: firebase.database.ServerValue.TIMESTAMP,
+      duration: Number($('secondsSel').value)
+    }).catch(fail);
+  });
+
+  function closeRound() {
+    return db.ref('sessions/' + bKey + '/phase').set('closed').catch(fail);
+  }
+  $('closeBtn').addEventListener('click', closeRound);
+
+  $('revealBtn').addEventListener('click', function () {
+    if (!correct) { showError('ctrlError', 'เลือก "ข้อที่ถูก" ก่อนกดเฉลย'); return; }
+    showError('ctrlError', '');
+    db.ref('sessions/' + bKey).update({ phase: 'reveal', correct: correct }).catch(fail);
+  });
+
+  $('resetBtn').addEventListener('click', function () {
+    if (!confirm('ล้างคำตอบและคะแนนของสาขา ' + bKey + ' แล้วเริ่มรอบใหม่?')) return;
+    showError('ctrlError', '');
+    db.ref('answers/' + bKey).remove()
+      .then(function () { return db.ref('sessions/' + bKey).set({ phase: 'waiting' }); })
+      .catch(fail);
+  });
+
+  // ---------- แสดงผลเรียลไทม์ ----------
+  function render() {
+    var br = cfg.branches[bKey];
+    var phase = session.phase || 'waiting';
+    $('phase').textContent = PHASE_LABEL[phase] || phase;
+    $('phase').className = 'phase ' + phase;
+
+    var pIds = Object.keys(players), aIds = Object.keys(answers);
+    $('sJoined').textContent = pIds.length;
+    $('sEnded').textContent = pIds.filter(function (id) { return players[id] && players[id].videoEnded; }).length;
+    $('sAnswered').textContent = aIds.length;
+
+    $('startBtn').disabled = phase !== 'waiting';
+    $('closeBtn').disabled = phase !== 'open';
+    $('revealBtn').disabled = !(phase === 'closed' || phase === 'open');
+    $('timer').hidden = phase !== 'open';
+
+    // แท่งจำนวนคำตอบแต่ละข้อ
+    var bars = $('bars');
+    bars.innerHTML = '';
+    var total = aIds.length || 1;
+    br.options.forEach(function (o, i) {
+      var n = aIds.filter(function (id) { return answers[id].choice === o.key; }).length;
+      var bar = el('div', 'bar' + (correct === o.key && phase === 'reveal' ? ' correct' : ''));
+      var head = el('div', 'head');
+      head.appendChild(el('span', 't', o.key + '  ' + o.text));
+      head.appendChild(el('span', null, n + ' คน'));
+      var track = el('div', 'track');
+      var fill = el('div', 'fill c' + (i % 4));
+      fill.style.width = Math.round(n / total * 100) + '%';
+      track.appendChild(fill);
+      bar.appendChild(head); bar.appendChild(track);
+      bars.appendChild(bar);
+    });
+
+    // ตารางคะแนน
+    var rows = aIds.map(function (id) {
+      var a = answers[id];
+      var ok = correct ? a.choice === correct : null;
+      var score = ok && session.openedAt ? window.quizScore(a.at, session.openedAt, session.duration) : 0;
+      return { name: a.name, choice: a.choice, ok: ok, score: score, at: a.at };
+    });
+    rows.sort(function (x, y) { return (y.score - x.score) || (x.at - y.at); });
+
+    $('boardHint').textContent = correct
+      ? 'ตอบถูกได้ 500 คะแนน บวกโบนัสความเร็วสูงสุด 500'
+      : 'ยังไม่ได้ตั้งข้อที่ถูก ตารางจะเรียงตามลำดับที่ตอบจนกว่าจะตั้ง';
+    var body = $('boardBody');
+    body.innerHTML = '';
+    if (!rows.length) {
+      var tr0 = el('tr'); var td0 = el('td', 'muted', 'ยังไม่มีคำตอบเข้ามา'); td0.colSpan = 4;
+      tr0.appendChild(td0); body.appendChild(tr0);
+    }
+    rows.slice(0, 30).forEach(function (r, i) {
+      var tr = el('tr');
+      tr.appendChild(el('td', null, String(i + 1)));
+      tr.appendChild(el('td', null, r.name));
+      tr.appendChild(el('td', null, r.choice + (r.ok === null ? '' : (r.ok ? ' ถูก' : ' ผิด'))));
+      tr.appendChild(el('td', 'n', correct ? String(r.score) : ''));
+      body.appendChild(tr);
+    });
+  }
+
+  // นับถอยหลัง และปิดรับคำตอบเองเมื่อหมดเวลา
+  var closing = false;
+  setInterval(function () {
+    if (session.phase !== 'open' || !session.openedAt) { closing = false; return; }
+    var dur = session.duration * 1000;
+    var left = Math.max(0, session.openedAt + dur - now());
+    $('timerNum').textContent = Math.ceil(left / 1000);
+    $('timerFill').style.transform = 'scaleX(' + (left / dur) + ')';
+    if (left <= 0 && !closing) { closing = true; closeRound(); }
+  }, 200);
+})();
+</script>
+</body>
+</html>
