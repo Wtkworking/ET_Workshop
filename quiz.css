@@ -141,3 +141,32 @@ input[type=text], input[type=email], input[type=password], select {
 .board td.n, .board th.n { text-align: right; font-variant-numeric: tabular-nums; }
 .board td.n { font-family: var(--display); font-weight: 700; }
 .link { word-break: break-all; font-size: .92rem; }
+
+/* จอฉาย (หน้า admin บนโปรเจกเตอร์) */
+.stage { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px; }
+.stage:fullscreen { border-radius: 0; border: 0; padding: 4vh 4vw; overflow: auto; display: flex; flex-direction: column; justify-content: center; }
+.stage h2 { font-family: var(--display); font-size: clamp(1.4rem, 2.6vw, 2.4rem); line-height: 1.35; margin: 0 0 16px; }
+.stage .video { max-height: 78vh; margin: 0 auto; }
+.stage:fullscreen .video { max-height: 90vh; width: min(100%, 160vh); }
+.note { margin-top: 10px; color: var(--ink-soft); }
+
+.qrwrap { display: grid; gap: 28px; align-items: center; justify-items: center; }
+@media (min-width: 860px) { .qrwrap { grid-template-columns: auto 1fr; justify-items: start; } }
+.qr { background: #fff; padding: 16px; border-radius: 14px; line-height: 0; }
+.qr img, .qr canvas { width: min(60vh, 78vw, 440px) !important; height: auto !important; }
+.qrtext .big { font-family: var(--display); font-weight: 700; font-size: clamp(1.8rem, 4vw, 3.4rem); line-height: 1.2; margin: 0 0 10px; }
+.qrtext .count { font-family: var(--display); font-weight: 700; font-size: clamp(2.4rem, 6vw, 4.6rem); line-height: 1; }
+
+.livehead { display: flex; gap: 20px; justify-content: space-between; align-items: flex-start; }
+.qr.small { padding: 8px; border-radius: 10px; flex: none; text-align: center; }
+.qr.small img, .qr.small canvas { width: 120px !important; }
+.tiles { display: grid; gap: 12px; }
+@media (min-width: 760px) { .tiles { grid-template-columns: 1fr 1fr; } }
+.tile { display: flex; gap: 14px; align-items: flex-start; color: #fff; border-radius: 14px; padding: 18px; font-weight: 600; font-size: clamp(1rem, 1.6vw, 1.4rem); line-height: 1.5; }
+.tile .key { flex: none; width: 48px; height: 48px; border-radius: 10px; background: rgba(255,255,255,.22); display: grid; place-items: center; font-family: var(--display); font-size: 1.5rem; font-weight: 700; }
+.tile .n { margin-left: auto; flex: none; font-family: var(--display); font-size: 1.8rem; font-weight: 700; padding-left: 12px; }
+.tile.dim { opacity: .3; }
+.answered { font-family: var(--display); font-weight: 700; font-size: clamp(1.3rem, 2.4vw, 2rem); margin-top: 16px; }
+.stage .board { margin-top: 20px; font-size: clamp(1rem, 1.5vw, 1.3rem); }
+details.settings { margin-top: 16px; }
+details.settings summary { cursor: pointer; font-weight: 600; }

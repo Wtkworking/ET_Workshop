@@ -33,70 +33,82 @@
     <div class="error" id="loginError" hidden></div>
   </section>
 
-  <!-- แผงควบคุม -->
   <section id="app" hidden>
-    <div class="tabs" id="tabs" role="tablist"></div>
+    <div class="row" style="justify-content:space-between; margin-bottom:16px">
+      <div class="tabs" id="tabs" role="tablist" style="margin:0"></div>
+      <span class="phase" id="phase"></span>
+    </div>
 
-    <div class="grid">
-      <div>
-        <div class="panel">
-          <div class="row" style="justify-content:space-between">
-            <h2 id="bTitle" style="margin:0"></h2>
-            <span class="phase" id="phase"></span>
-          </div>
-          <p id="question" style="font-weight:600; margin:12px 0 0"></p>
+    <!-- จอฉาย: ส่วนนี้คือสิ่งที่นักเรียนเห็นบนโปรเจกเตอร์ -->
+    <div class="stage" id="stage">
+      <!-- 1) คลิป -->
+      <div id="videoBox">
+        <div class="video" id="videoHolder"></div>
+        <div class="note" id="videoNote"></div>
+      </div>
 
-          <div class="stats">
-            <div class="stat"><b id="sJoined">0</b><span>เข้าร่วม</span></div>
-            <div class="stat"><b id="sEnded">0</b><span>ดูคลิปจบแล้ว</span></div>
-            <div class="stat"><b id="sAnswered">0</b><span>ตอบแล้ว</span></div>
+      <!-- 2) QR ให้สแกน -->
+      <div id="qrBox" hidden>
+        <div class="qrwrap">
+          <div class="qr" id="qrBig"></div>
+          <div class="qrtext">
+            <p class="big">สแกนเพื่อตอบคำถาม</p>
+            <p class="muted link" id="qrLink"></p>
+            <p style="margin:24px 0 4px" class="muted">เข้าร่วมแล้ว</p>
+            <div class="count"><span id="joinedBig">0</span> คน</div>
           </div>
-
-          <div class="timer" id="timer" hidden>
-            <div class="num" id="timerNum"></div>
-            <div class="track"><div class="fill" id="timerFill"></div></div>
-          </div>
-
-          <div id="bars"></div>
-        </div>
-
-        <div class="panel">
-          <h2>ควบคุมรอบนี้</h2>
-          <div class="row">
-            <button class="btn" id="startBtn">เปิดรับคำตอบ</button>
-            <button class="btn ghost" id="closeBtn">ปิดรับคำตอบ</button>
-            <button class="btn ghost" id="revealBtn">เฉลย</button>
-            <button class="btn danger" id="resetBtn">เริ่มรอบใหม่</button>
-          </div>
-          <div class="row" style="margin-top:16px">
-            <div style="flex:1; min-width:160px">
-              <label for="correctSel">ข้อที่ถูก</label>
-              <select id="correctSel"></select>
-            </div>
-            <div style="flex:1; min-width:160px">
-              <label for="secondsSel">เวลาตอบ</label>
-              <select id="secondsSel">
-                <option value="10">10 วินาที</option>
-                <option value="20">20 วินาที</option>
-                <option value="30">30 วินาที</option>
-                <option value="60">60 วินาที</option>
-              </select>
-            </div>
-          </div>
-          <div class="error" id="ctrlError" hidden></div>
-          <p class="muted" style="margin:14px 0 4px">ลิงก์สำหรับผู้ชมของสาขานี้</p>
-          <div class="link" id="viewerLink"></div>
         </div>
       </div>
 
-      <div class="panel">
-        <h2>คะแนน</h2>
-        <p class="muted" id="boardHint"></p>
-        <table class="board">
-          <thead><tr><th>อันดับ</th><th>ชื่อ</th><th>ตอบ</th><th class="n">คะแนน</th></tr></thead>
+      <!-- 3) คำถาม ผลตอบ และคะแนน -->
+      <div id="liveBox" hidden>
+        <div class="livehead">
+          <h2 id="question"></h2>
+          <div class="qr small" id="qrSmall"></div>
+        </div>
+        <div class="timer" id="timer" hidden>
+          <div class="num" id="timerNum"></div>
+          <div class="track"><div class="fill" id="timerFill"></div></div>
+        </div>
+        <div class="tiles" id="tiles"></div>
+        <div class="answered" id="answered"></div>
+        <table class="board" id="board" hidden>
+          <thead><tr><th>อันดับ</th><th>ชื่อ</th><th class="n">คะแนน</th></tr></thead>
           <tbody id="boardBody"></tbody>
         </table>
       </div>
+    </div>
+
+    <!-- ปุ่มควบคุม -->
+    <div class="panel" style="margin-top:16px">
+      <div class="row">
+        <button class="btn ghost" id="qrBtn">แสดง QR</button>
+        <button class="btn" id="startBtn">เปิดรับคำตอบ</button>
+        <button class="btn ghost" id="closeBtn">ปิดรับคำตอบ</button>
+        <button class="btn ghost" id="revealBtn">เฉลย</button>
+        <button class="btn danger" id="resetBtn">เริ่มรอบใหม่</button>
+        <button class="btn ghost" id="fullBtn" style="margin-left:auto">ฉายเต็มจอ</button>
+      </div>
+      <div class="error" id="ctrlError" hidden></div>
+
+      <details class="settings">
+        <summary>ตั้งค่าของสาขานี้ (ตั้งก่อนเริ่มฉาย เพราะจอนี้นักเรียนมองเห็น)</summary>
+        <div class="row" style="margin-top:12px">
+          <div style="flex:1; min-width:160px">
+            <label for="correctSel">ข้อที่ถูก</label>
+            <select id="correctSel"></select>
+          </div>
+          <div style="flex:1; min-width:160px">
+            <label for="secondsSel">เวลาตอบ</label>
+            <select id="secondsSel">
+              <option value="10">10 วินาที</option>
+              <option value="20">20 วินาที</option>
+              <option value="30">30 วินาที</option>
+              <option value="60">60 วินาที</option>
+            </select>
+          </div>
+        </div>
+      </details>
     </div>
   </section>
 
@@ -106,6 +118,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="quiz-config.js"></script>
 <script>
 (function () {
@@ -115,6 +128,8 @@
   var bKey = keys[0];
   var db, offset = 0, refs = [];
   var session = { phase: 'waiting' }, players = {}, answers = {}, correct = null;
+  var showQr = false;       // true = คลิปจบแล้ว กำลังโชว์ QR
+  var media = null;         // ตัวเล่นคลิปของสาขาที่เลือก { pause, restart, destroy }
   var PHASE_LABEL = { waiting: 'รอเริ่ม', open: 'กำลังรับคำตอบ', closed: 'ปิดรับคำตอบแล้ว', reveal: 'เฉลยแล้ว' };
 
   function now() { return Date.now() + offset; }
@@ -125,6 +140,7 @@
     return n;
   }
   function showError(id, msg) { $(id).textContent = msg; $(id).hidden = !msg; }
+  function viewerUrl() { return new URL('index.html?b=' + bKey, location.href).href; }
 
   try {
     firebase.initializeApp(cfg.firebase);
@@ -147,6 +163,7 @@
   firebase.auth().onAuthStateChanged(function (user) {
     detach();
     if (!user || user.isAnonymous) {
+      if (media) { media.destroy(); media = null; }
       $('login').hidden = false; $('app').hidden = true; $('logoutBtn').hidden = true; $('who').textContent = '';
       return;
     }
@@ -162,6 +179,83 @@
       $('login').hidden = false; $('app').hidden = true;
     });
   });
+
+  // ---------- คลิป: YouTube / ไฟล์ mp4 / Google Drive ----------
+  var ytReady = false, ytQueue = null;
+  window.onYouTubeIframeAPIReady = function () { ytReady = true; if (ytQueue) { ytQueue(); ytQueue = null; } };
+
+  function onClipEnded() {
+    if ((session.phase || 'waiting') !== 'waiting') return;
+    showQr = true;
+    render();
+  }
+
+  function mountVideo(br) {
+    if (media) { media.destroy(); media = null; }
+    var holder = $('videoHolder');
+    holder.innerHTML = '';
+    $('videoNote').textContent = '';
+
+    if (br.videoId) {
+      var slot = el('div'); slot.id = 'ytSlot'; holder.appendChild(slot);
+      var yt = null, dead = false;
+      var make = function () {
+        if (dead) return;
+        yt = new YT.Player('ytSlot', {
+          videoId: br.videoId,
+          playerVars: { rel: 0, playsinline: 1 },
+          events: { onStateChange: function (e) { if (e.data === YT.PlayerState.ENDED) onClipEnded(); } }
+        });
+      };
+      if (ytReady) make();
+      else {
+        ytQueue = make;
+        if (!document.getElementById('ytApi')) {
+          var tag = el('script'); tag.id = 'ytApi'; tag.src = 'https://www.youtube.com/iframe_api';
+          document.head.appendChild(tag);
+        }
+      }
+      media = {
+        pause: function () { try { yt && yt.pauseVideo(); } catch (e) {} },
+        restart: function () { try { yt && yt.seekTo(0); yt && yt.pauseVideo(); } catch (e) {} },
+        destroy: function () { dead = true; try { yt && yt.destroy(); } catch (e) {} }
+      };
+      $('videoNote').textContent = 'เมื่อคลิปจบ QR จะขึ้นเอง';
+    } else if (br.videoFile) {
+      var v = el('video');
+      v.src = br.videoFile; v.controls = true; v.playsInline = true; v.preload = 'metadata';
+      v.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+      v.addEventListener('ended', onClipEnded);
+      holder.appendChild(v);
+      media = {
+        pause: function () { v.pause(); },
+        restart: function () { v.pause(); v.currentTime = 0; },
+        destroy: function () { v.pause(); v.removeAttribute('src'); v.load(); }
+      };
+      $('videoNote').textContent = 'เมื่อคลิปจบ QR จะขึ้นเอง';
+    } else if (br.driveId) {
+      var src = 'https://drive.google.com/file/d/' + encodeURIComponent(br.driveId) + '/preview';
+      var f = el('iframe');
+      f.src = src; f.allow = 'autoplay; fullscreen'; f.allowFullscreen = true; f.style.border = '0';
+      holder.appendChild(f);
+      media = {
+        pause: function () { f.src = 'about:blank'; },          // Drive สั่งหยุดจากภายนอกไม่ได้ จึงถอดคลิปออก
+        restart: function () { f.src = src; },
+        destroy: function () { f.src = 'about:blank'; }
+      };
+      $('videoNote').textContent = 'คลิปจาก Google Drive ตรวจไม่ได้ว่าจบเมื่อไร เมื่อคลิปจบให้กดปุ่ม "แสดง QR"';
+    } else {
+      holder.appendChild(el('div', 'center muted', 'ยังไม่ได้ใส่คลิปของสาขานี้ใน quiz-config.js'));
+      holder.firstChild.style.cssText = 'position:absolute;inset:0;display:grid;place-items:center;color:#fff';
+    }
+  }
+
+  // ---------- QR ----------
+  function drawQr(target, size) {
+    target.innerHTML = '';
+    if (typeof QRCode === 'undefined') { target.textContent = 'โหลดตัวสร้าง QR ไม่ได้'; return; }
+    new QRCode(target, { text: viewerUrl(), width: size, height: size, correctLevel: QRCode.CorrectLevel.M });
+  }
 
   // ---------- เลือกสาขา ----------
   function buildTabs() {
@@ -190,14 +284,16 @@
   function selectBranch(k) {
     detach();
     bKey = k;
-    session = { phase: 'waiting' }; players = {}; answers = {}; correct = null;
+    session = { phase: 'waiting' }; players = {}; answers = {}; correct = null; showQr = false;
     Array.prototype.forEach.call($('tabs').children, function (b) {
       b.setAttribute('aria-selected', b.dataset.k === k ? 'true' : 'false');
     });
     var br = cfg.branches[k];
-    $('bTitle').textContent = k + ' ' + br.name;
     $('question').textContent = br.question;
-    $('viewerLink').textContent = new URL('index.html?b=' + k, location.href).href;
+    $('qrLink').textContent = viewerUrl();
+    drawQr($('qrBig'), 640);
+    drawQr($('qrSmall'), 240);
+    mountVideo(br);
 
     var sel = $('correctSel');
     sel.innerHTML = '';
@@ -221,8 +317,16 @@
     db.ref('private/' + bKey + '/correct').set($('correctSel').value || null).catch(fail);
   });
 
+  $('qrBtn').addEventListener('click', function () {
+    showQr = !showQr;
+    if (showQr) { if (media) media.pause(); }
+    else if (media) media.restart();
+    render();
+  });
+
   $('startBtn').addEventListener('click', function () {
     showError('ctrlError', '');
+    if (media) media.pause();
     db.ref('sessions/' + bKey).set({
       phase: 'open',
       openedAt: firebase.database.ServerValue.TIMESTAMP,
@@ -236,17 +340,26 @@
   $('closeBtn').addEventListener('click', closeRound);
 
   $('revealBtn').addEventListener('click', function () {
-    if (!correct) { showError('ctrlError', 'เลือก "ข้อที่ถูก" ก่อนกดเฉลย'); return; }
+    if (!correct) { showError('ctrlError', 'ตั้ง "ข้อที่ถูก" ในส่วนตั้งค่าก่อนกดเฉลย'); return; }
     showError('ctrlError', '');
     db.ref('sessions/' + bKey).update({ phase: 'reveal', correct: correct }).catch(fail);
   });
 
   $('resetBtn').addEventListener('click', function () {
-    if (!confirm('ล้างคำตอบและคะแนนของสาขา ' + bKey + ' แล้วเริ่มรอบใหม่?')) return;
+    if (!confirm('ล้างคำตอบและรายชื่อผู้เข้าร่วมของสาขา ' + bKey + ' แล้วเริ่มรอบใหม่?')) return;
     showError('ctrlError', '');
+    showQr = false;
+    if (media) media.restart();
     db.ref('answers/' + bKey).remove()
+      .then(function () { return db.ref('players/' + bKey).remove(); })
       .then(function () { return db.ref('sessions/' + bKey).set({ phase: 'waiting' }); })
       .catch(fail);
+  });
+
+  $('fullBtn').addEventListener('click', function () {
+    var s = $('stage');
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (s.requestFullscreen) s.requestFullscreen();
   });
 
   // ---------- แสดงผลเรียลไทม์ ----------
@@ -256,58 +369,67 @@
     $('phase').textContent = PHASE_LABEL[phase] || phase;
     $('phase').className = 'phase ' + phase;
 
-    var pIds = Object.keys(players), aIds = Object.keys(answers);
-    $('sJoined').textContent = pIds.length;
-    $('sEnded').textContent = pIds.filter(function (id) { return players[id] && players[id].videoEnded; }).length;
-    $('sAnswered').textContent = aIds.length;
+    var joined = Object.keys(players).length;
+    var aIds = Object.keys(answers);
+    $('joinedBig').textContent = joined;
 
+    // เลือกว่าจอฉายแสดงอะไร
+    var mode = phase !== 'waiting' ? 'live' : (showQr ? 'qr' : 'video');
+    $('videoBox').hidden = mode !== 'video';
+    $('qrBox').hidden = mode !== 'qr';
+    $('liveBox').hidden = mode !== 'live';
+
+    $('qrBtn').disabled = phase !== 'waiting';
+    $('qrBtn').textContent = showQr ? 'กลับไปดูคลิป' : 'แสดง QR';
     $('startBtn').disabled = phase !== 'waiting';
     $('closeBtn').disabled = phase !== 'open';
     $('revealBtn').disabled = !(phase === 'closed' || phase === 'open');
-    $('timer').hidden = phase !== 'open';
+    if (mode !== 'live') return;
 
-    // แท่งจำนวนคำตอบแต่ละข้อ
-    var bars = $('bars');
-    bars.innerHTML = '';
-    var total = aIds.length || 1;
+    $('timer').hidden = phase !== 'open';
+    $('qrSmall').hidden = phase !== 'open';
+
+    // ระหว่างรับคำตอบไม่โชว์ว่าข้อไหนคนตอบเยอะ เพื่อไม่ให้ชี้นำ
+    var showCounts = phase !== 'open';
+    var tiles = $('tiles');
+    tiles.innerHTML = '';
     br.options.forEach(function (o, i) {
-      var n = aIds.filter(function (id) { return answers[id].choice === o.key; }).length;
-      var bar = el('div', 'bar' + (correct === o.key && phase === 'reveal' ? ' correct' : ''));
-      var head = el('div', 'head');
-      head.appendChild(el('span', 't', o.key + '  ' + o.text));
-      head.appendChild(el('span', null, n + ' คน'));
-      var track = el('div', 'track');
-      var fill = el('div', 'fill c' + (i % 4));
-      fill.style.width = Math.round(n / total * 100) + '%';
-      track.appendChild(fill);
-      bar.appendChild(head); bar.appendChild(track);
-      bars.appendChild(bar);
+      var t = el('div', 'tile c' + (i % 4));
+      t.appendChild(el('span', 'key', o.key));
+      t.appendChild(el('span', null, o.text));
+      if (showCounts) {
+        var n = aIds.filter(function (id) { return answers[id].choice === o.key; }).length;
+        t.appendChild(el('span', 'n', String(n)));
+      }
+      if (phase === 'reveal' && session.correct !== o.key) t.classList.add('dim');
+      tiles.appendChild(t);
     });
 
-    // ตารางคะแนน
+    $('answered').textContent = phase === 'reveal'
+      ? 'ข้อที่ถูกคือ ' + session.correct
+      : 'ตอบแล้ว ' + aIds.length + ' จาก ' + Math.max(joined, aIds.length) + ' คน';
+
+    // ตารางคะแนน แสดงหลังเฉลยเท่านั้น
+    $('board').hidden = phase !== 'reveal';
+    if (phase !== 'reveal') return;
     var rows = aIds.map(function (id) {
       var a = answers[id];
-      var ok = correct ? a.choice === correct : null;
-      var score = ok && session.openedAt ? window.quizScore(a.at, session.openedAt, session.duration) : 0;
-      return { name: a.name, choice: a.choice, ok: ok, score: score, at: a.at };
-    });
+      var ok = a.choice === session.correct;
+      return { name: a.name, at: a.at, score: ok ? window.quizScore(a.at, session.openedAt, session.duration) : 0 };
+    }).filter(function (r) { return r.score > 0; });
     rows.sort(function (x, y) { return (y.score - x.score) || (x.at - y.at); });
 
-    $('boardHint').textContent = correct
-      ? 'ตอบถูกได้ 500 คะแนน บวกโบนัสความเร็วสูงสุด 500'
-      : 'ยังไม่ได้ตั้งข้อที่ถูก ตารางจะเรียงตามลำดับที่ตอบจนกว่าจะตั้ง';
     var body = $('boardBody');
     body.innerHTML = '';
     if (!rows.length) {
-      var tr0 = el('tr'); var td0 = el('td', 'muted', 'ยังไม่มีคำตอบเข้ามา'); td0.colSpan = 4;
+      var tr0 = el('tr'); var td0 = el('td', 'muted', 'รอบนี้ยังไม่มีใครตอบถูก'); td0.colSpan = 3;
       tr0.appendChild(td0); body.appendChild(tr0);
     }
-    rows.slice(0, 30).forEach(function (r, i) {
+    rows.slice(0, 10).forEach(function (r, i) {
       var tr = el('tr');
       tr.appendChild(el('td', null, String(i + 1)));
       tr.appendChild(el('td', null, r.name));
-      tr.appendChild(el('td', null, r.choice + (r.ok === null ? '' : (r.ok ? ' ถูก' : ' ผิด'))));
-      tr.appendChild(el('td', 'n', correct ? String(r.score) : ''));
+      tr.appendChild(el('td', 'n', String(r.score)));
       body.appendChild(tr);
     });
   }
