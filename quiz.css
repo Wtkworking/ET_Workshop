@@ -218,6 +218,15 @@ input:focus, select:focus { outline: none; background: #fffbe9; box-shadow: inse
 .qrtext .count { font-family: var(--display); font-weight: 700; font-size: clamp(1.6rem, 3vw, 2.4rem); line-height: 1.2; }
 .qrtext .count span { font-family: var(--pixel); font-size: clamp(2.2rem, 5.5vw, 4.4rem); color: var(--opt-1); text-shadow: 4px 4px 0 #000; margin-right: 12px; }
 .link { word-break: break-all; font-size: .92rem; }
+/* ป้าย "เข้าร่วมแล้ว" เหนือจำนวนคน */
+.qrtext .muted:not(.link) {
+  display: inline-block; margin: 28px 0 14px !important; padding: 8px 18px;
+  font-family: var(--display); font-weight: 700; font-size: clamp(1.3rem, 2.4vw, 2rem); line-height: 1.3;
+  color: #fff; background: var(--pink);
+  border: var(--px) solid #000; box-shadow: 6px 6px 0 #000;
+  text-shadow: 3px 3px 0 #000; letter-spacing: .02em;
+}
+.qrtext .count { display: flex; align-items: baseline; }
 
 .livehead { display: flex; gap: 20px; justify-content: space-between; align-items: flex-start; }
 .qr.small { padding: 8px; flex: none; text-align: center; box-shadow: 4px 4px 0 var(--pink); }
