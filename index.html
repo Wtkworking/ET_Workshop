@@ -68,7 +68,7 @@
     $('picker').hidden = false;
     return;
   }
-  $('branchName').textContent = bKey + ' ' + branch.name;
+  $('branchName').textContent = branch.name && branch.name !== bKey ? bKey + ' ' + branch.name : bKey;
 
   // ---------- สถานะของหน้านี้ ----------
   var store = {
