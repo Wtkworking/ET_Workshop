@@ -44,7 +44,6 @@
       <!-- 1) คลิป -->
       <div id="videoBox">
         <div class="video" id="videoHolder"></div>
-        <div class="note" id="videoNote"></div>
       </div>
 
       <!-- 2) QR ให้สแกน -->
@@ -211,7 +210,6 @@
     if (media) { media.destroy(); media = null; }
     var holder = $('videoHolder');
     holder.innerHTML = '';
-    $('videoNote').textContent = '';
 
     if (br.videoId) {
       var slot = el('div'); slot.id = 'ytSlot'; holder.appendChild(slot);
@@ -237,7 +235,6 @@
         restart: function () { try { yt && yt.seekTo(0); yt && yt.pauseVideo(); } catch (e) {} },
         destroy: function () { dead = true; try { yt && yt.destroy(); } catch (e) {} }
       };
-      $('videoNote').textContent = 'เมื่อคลิปจบ QR จะขึ้นเอง';
     } else if (br.videoFile) {
       var v = el('video');
       v.src = br.videoFile; v.controls = true; v.playsInline = true; v.preload = 'metadata';
@@ -249,7 +246,6 @@
         restart: function () { v.pause(); v.currentTime = 0; },
         destroy: function () { v.pause(); v.removeAttribute('src'); v.load(); }
       };
-      $('videoNote').textContent = 'เมื่อคลิปจบ QR จะขึ้นเอง';
     } else if (br.driveId) {
       var src = 'https://drive.google.com/file/d/' + encodeURIComponent(br.driveId) + '/preview';
       var f = el('iframe');
@@ -260,7 +256,6 @@
         restart: function () { f.src = src; },
         destroy: function () { f.src = 'about:blank'; }
       };
-      $('videoNote').textContent = 'คลิปจาก Google Drive ตรวจไม่ได้ว่าจบเมื่อไร เมื่อคลิปจบให้กดปุ่ม "แสดง QR"';
     } else {
       holder.appendChild(el('div', 'center muted', 'ยังไม่ได้ใส่คลิปของสาขานี้ใน quiz-config.js'));
       holder.firstChild.style.cssText = 'position:absolute;inset:0;display:grid;place-items:center;color:#fff';
