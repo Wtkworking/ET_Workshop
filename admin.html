@@ -92,7 +92,7 @@
       </div>
       <div class="error" id="ctrlError" hidden></div>
 
-      <details class="settings">
+      <details class="settings" id="settings">
         <summary>ตั้งค่าของสาขานี้ (ตั้งก่อนเริ่มฉาย เพราะจอนี้นักเรียนมองเห็น)</summary>
         <div class="row" style="margin-top:12px">
           <div style="flex:2; min-width:220px">
@@ -118,7 +118,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="quiz-config.js"></script>
 <script>
@@ -127,7 +127,8 @@
   var $ = function (id) { return document.getElementById(id); };
   var keys = Object.keys(cfg.branches);
   var bKey = keys[0];
-  var db, offset = 0, refs = [];
+  var db, offset = 0, unsubs = [], roundUnsubs = [], listenRound = null, pendingOpen = null;
+  function newRound() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
   var session = { phase: 'waiting' }, players = {}, answers = {}, correctMap = {};
   var questions = [];
   function curKey() { return session.qKey || 'q0'; }
@@ -148,7 +149,7 @@
 
   try {
     firebase.initializeApp(cfg.firebase);
-    db = firebase.database();
+    db = firebase.firestore();
   } catch (e) {
     showError('fatal', 'เชื่อมต่อระบบไม่ได้ ตรวจค่า firebase ในไฟล์ quiz-config.js');
     return;
@@ -181,18 +182,17 @@
       $('login').hidden = false; $('app').hidden = true; $('logoutBtn').hidden = true; $('who').textContent = '';
       return;
     }
-    db.ref('admins/' + user.uid).once('value').then(function (s) {
-      if (s.val() !== true) throw new Error('not-admin');
+    db.collection('admins').doc(user.uid).get().then(function (snap) {
+      if (!snap.exists) throw new Error('not-admin');
       $('login').hidden = true; $('app').hidden = false; $('logoutBtn').hidden = false;
       $('who').textContent = user.email;
-      db.ref('.info/serverTimeOffset').on('value', function (x) { offset = x.val() || 0; });
       buildTabs();
       selectBranch(bKey);
     }).catch(function (e) {
       var denied = e && /permission/i.test(String(e.code || e.message));
       showError('loginError', denied
-        ? 'เข้าสู่ระบบได้ แต่ฐานข้อมูลไม่ให้อ่าน: ยังไม่ได้วางกฎจาก database.rules.json ในแท็บ Rules แล้วกด Publish'
-        : 'เข้าสู่ระบบได้ แต่บัญชีนี้ยังไม่มีสิทธิ์ผู้ดูแล: ในฐานข้อมูลต้องมี admins > ' + user.uid + ' มีค่า true (ไม่มีเครื่องหมายคำพูด)');
+        ? 'เข้าสู่ระบบได้ แต่ Firestore ไม่ให้อ่าน: ยังไม่ได้วางกฎจากไฟล์ firestore.rules ที่ Firestore Database > Rules แล้วกด Publish'
+        : 'เข้าสู่ระบบได้ แต่บัญชีนี้ยังไม่มีสิทธิ์ผู้ดูแล: ใน Firestore ต้องมีคอลเลกชัน admins ที่มีเอกสารชื่อ ' + user.uid);
       $('login').hidden = false; $('app').hidden = true;
     });
   });
@@ -287,15 +287,38 @@
     });
   }
 
+  function detachRound() {
+    roundUnsubs.forEach(function (u) { u(); });
+    roundUnsubs = [];
+    listenRound = null;
+  }
   function detach() {
-    refs.forEach(function (r) { r.off(); });
-    refs = [];
+    detachRound();
+    unsubs.forEach(function (u) { u(); });
+    unsubs = [];
   }
 
-  function listen(path, cb) {
-    var r = db.ref(path);
-    r.on('value', function (s) { cb(s.val()); render(); });
-    refs.push(r);
+  // ฟังรายชื่อผู้เข้าร่วมและคำตอบของรอบปัจจุบันเท่านั้น
+  function watchRound(k, r) {
+    detachRound();
+    listenRound = r;
+    players = {}; answers = {};
+    var base = db.collection('sessions').doc(k);
+    roundUnsubs.push(base.collection('players').where('round', '==', r).onSnapshot(function (qs) {
+      players = {};
+      qs.forEach(function (doc) { players[doc.id] = doc.data(); });
+      render();
+    }, fail));
+    roundUnsubs.push(base.collection('answers').where('round', '==', r).onSnapshot(function (qs) {
+      answers = {};
+      qs.forEach(function (doc) {
+        var a = doc.data({ serverTimestamps: 'estimate' });
+        (answers[a.q] = answers[a.q] || {})[a.uid] = {
+          choice: a.choice, name: a.name, at: a.at && a.at.toMillis ? a.at.toMillis() : 0
+        };
+      });
+      render();
+    }, fail));
   }
 
   function selectBranch(k) {
@@ -324,7 +347,9 @@
         sel.appendChild(new Option((questions.length > 1 ? 'ข้อ ' + (i + 1) + ': ' : 'ข้อ ') + o.key, o.key));
       });
       sel.addEventListener('change', function () {
-        db.ref('private/' + bKey + '/correct/q' + i).set(sel.value || null).catch(fail);
+        var c = {};
+        c['q' + i] = sel.value || firebase.firestore.FieldValue.delete();
+        db.collection('private').doc(bKey).set({ correct: c }, { merge: true }).catch(fail);
       });
       box.appendChild(sel);
     });
@@ -332,16 +357,39 @@
     if (!$('secondsSel').value) $('secondsSel').value = '20';
     showError('ctrlError', '');
 
-    listen('sessions/' + k, function (v) { session = v || { phase: 'waiting' }; });
-    listen('players/' + k, function (v) { players = v || {}; });
-    listen('answers/' + k, function (v) { answers = v || {}; });
-    listen('private/' + k + '/correct', function (v) {
-      correctMap = typeof v === 'string' ? { q0: v } : (v || {});
+    var sref = db.collection('sessions').doc(k);
+    unsubs.push(sref.onSnapshot(function (snap) {
+      var d = snap.exists ? snap.data({ serverTimestamps: 'estimate' }) : null;
+      if (!d || !d.round) {
+        // ยังไม่เคยใช้สาขานี้: สร้างรอบแรก
+        sref.set({ phase: 'waiting', round: newRound() }, { merge: true }).catch(fail);
+        return;
+      }
+      session = {
+        phase: d.phase || 'waiting',
+        qKey: d.qKey || 'q0',
+        openedAt: d.openedAt && d.openedAt.toMillis ? d.openedAt.toMillis() : 0,
+        duration: d.duration || cfg.answerSeconds,
+        correct: d.correct || null,
+        revealed: d.revealed || {},
+        round: d.round
+      };
+      if (pendingOpen && session.phase === 'open' && !snap.metadata.hasPendingWrites) {
+        // เทียบเวลาที่เซิร์ฟเวอร์บันทึกกับนาฬิกาเครื่องนี้ เพื่อให้ตัวนับถอยหลังตรง
+        offset = session.openedAt - (pendingOpen + Date.now()) / 2;
+        pendingOpen = null;
+      }
+      if (session.round !== listenRound) watchRound(k, session.round);
+      render();
+    }, fail));
+    unsubs.push(db.collection('private').doc(k).onSnapshot(function (snap) {
+      correctMap = (snap.exists && snap.data().correct) || {};
       questions.forEach(function (q, i) {
         var sel = $('correct-q' + i);
         if (sel) sel.value = correctMap['q' + i] || '';
       });
-    });
+      render();
+    }, fail));
     render();
   }
 
@@ -358,13 +406,14 @@
   function openQuestion(index) {
     showError('ctrlError', '');
     if (media) media.pause();
-    return db.ref('sessions/' + bKey).update({
+    pendingOpen = Date.now();
+    return db.collection('sessions').doc(bKey).set({
       phase: 'open',
       qKey: 'q' + index,
       correct: null,
-      openedAt: firebase.database.ServerValue.TIMESTAMP,
+      openedAt: firebase.firestore.FieldValue.serverTimestamp(),
       duration: Number($('secondsSel').value)
-    }).catch(fail);
+    }, { merge: true }).catch(fail);
   }
   $('startBtn').addEventListener('click', function () { openQuestion(0); });
   $('nextBtn').addEventListener('click', function () {
@@ -372,28 +421,30 @@
   });
 
   function closeRound() {
-    return db.ref('sessions/' + bKey + '/phase').set('closed').catch(fail);
+    return db.collection('sessions').doc(bKey).set({ phase: 'closed' }, { merge: true }).catch(fail);
   }
   $('closeBtn').addEventListener('click', closeRound);
 
   $('revealBtn').addEventListener('click', function () {
     var key = curKey(), c = correctMap[key];
-    if (!c) { showError('ctrlError', 'ตั้ง "ข้อที่ถูก" ของข้อ ' + (curIndex() + 1) + ' ในส่วนตั้งค่าก่อนกดเฉลย'); return; }
+    if (!c) {
+      showError('ctrlError', 'ตั้ง "ข้อที่ถูก" ของข้อ ' + (curIndex() + 1) + ' ในส่วนตั้งค่าด้านล่างก่อนกดเฉลย');
+      $('settings').open = true;
+      return;
+    }
     showError('ctrlError', '');
-    var up = { phase: 'reveal', correct: c };
-    up['revealed/' + key] = { correct: c, openedAt: session.openedAt || 0, duration: session.duration || 1 };
-    db.ref('sessions/' + bKey).update(up).catch(fail);
+    var rev = {};
+    rev[key] = { correct: c, openedAt: session.openedAt || 0, duration: session.duration || 1 };
+    db.collection('sessions').doc(bKey).set({ phase: 'reveal', correct: c, revealed: rev }, { merge: true }).catch(fail);
   });
 
   $('resetBtn').addEventListener('click', function () {
-    if (!confirm('ล้างคำตอบและรายชื่อผู้เข้าร่วมของสาขา ' + bKey + ' แล้วเริ่มรอบใหม่?')) return;
+    if (!confirm('เริ่มรอบใหม่ของสาขา ' + bKey + '? คำตอบและคะแนนของรอบนี้จะไม่แสดงอีก')) return;
     showError('ctrlError', '');
     showQr = false;
     if (media) media.restart();
-    db.ref('answers/' + bKey).remove()
-      .then(function () { return db.ref('players/' + bKey).remove(); })
-      .then(function () { return db.ref('sessions/' + bKey).set({ phase: 'waiting' }); })
-      .catch(fail);
+    // เปลี่ยนรหัสรอบ: ข้อมูลรอบเก่าไม่ถูกนับอีก และมือถือที่ยังเปิดอยู่จะกลับมาลงชื่อในรอบใหม่เอง
+    db.collection('sessions').doc(bKey).set({ phase: 'waiting', round: newRound() }).catch(fail);
   });
 
   $('fullBtn').addEventListener('click', function () {
