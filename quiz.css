@@ -1,172 +1,299 @@
+/* ธีมเกม 8-bit: ขอบหนา เงาแข็ง มุมเหลี่ยม สีสด
+   ตัวเลขและตัวอักษรอังกฤษใช้ฟอนต์พิกเซล ส่วนภาษาไทยใช้ Chakra Petch เพื่อให้อ่านง่าย */
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Chakra+Petch:wght@500;600;700&display=swap");
+
 :root {
-  color-scheme: light;
-  --bg: #f3f5fb;
-  --surface: #ffffff;
-  --ink: #14233f;
-  --ink-soft: #55627d;
-  --line: #d6dcea;
-  --brand: #2f4fd8;
-  --brand-ink: #ffffff;
-  --ok: #0f8f7f;
-  --bad: #d43d43;
-  --opt-0: #e5484d;
-  --opt-1: #2f6fde;
-  --opt-2: #e2a100;
-  --opt-3: #0f9d8a;
-  --display: "Chakra Petch", "Anuphan", "Leelawadee UI", "Thonburi", sans-serif;
-  --body: "Anuphan", "Leelawadee UI", "Thonburi", "Noto Sans Thai", sans-serif;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --bg: #0f1a30;
-    --surface: #18274a;
-    --ink: #eef2fb;
-    --ink-soft: #a9b5cf;
-    --line: #2c3d66;
-    --brand: #7f9bff;
-    --brand-ink: #0f1a30;
-    --ok: #3fd0bd;
-    --bad: #ff7b80;
-  }
+  color-scheme: dark;
+  --night: #1a1440;
+  --night-2: #261d5c;
+  --ink: #1a1333;
+  --paper: #fff7dc;
+  --paper-2: #ffe9a8;
+  --ink-soft: #5b4f7a;
+  --line: #1a1333;
+  --yellow: #ffc81a;
+  --pink: #ff5fa8;
+  --cyan: #35d6ff;
+  --ok: #18a558;
+  --bad: #e5303f;
+  --opt-0: #ff4757;
+  --opt-1: #2f7bff;
+  --opt-2: #ffb400;
+  --opt-3: #19b36b;
+  --px: 4px;
+  --pixel: "Press Start 2P", "Chakra Petch", monospace;
+  --display: "Chakra Petch", "Leelawadee UI", "Thonburi", sans-serif;
+  --body: "Chakra Petch", "Leelawadee UI", "Thonburi", "Noto Sans Thai", sans-serif;
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body {
-  background: var(--bg);
+  min-height: 100vh;
   color: var(--ink);
   font-family: var(--body);
+  font-weight: 500;
   font-size: 17px;
   line-height: 1.6;
+  /* ท้องฟ้ากลางคืนแบบพิกเซล: ดาวเป็นจุดสี่เหลี่ยมเล็ก ๆ */
+  background-color: var(--night);
+  background-image:
+    linear-gradient(var(--yellow) 0 0), linear-gradient(#fff 0 0), linear-gradient(var(--cyan) 0 0),
+    linear-gradient(#fff 0 0), linear-gradient(var(--pink) 0 0), linear-gradient(#fff 0 0),
+    linear-gradient(180deg, var(--night) 0%, var(--night-2) 100%);
+  background-size: 4px 4px, 4px 4px, 4px 4px, 4px 4px, 4px 4px, 4px 4px, 100% 100%;
+  background-position: 8% 12%, 27% 62%, 46% 22%, 68% 78%, 84% 16%, 93% 52%, 0 0;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 [hidden] { display: none !important; }
 
-.wrap { max-width: 760px; margin: 0 auto; padding: 20px 16px 48px; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 22px 16px 56px; }
 .wrap.wide { max-width: 1180px; }
 
-.topbar { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
-.topbar h1 { font-family: var(--display); font-size: 1.5rem; line-height: 1.25; margin: 0; }
-.topbar .branch { color: var(--ink-soft); font-weight: 600; }
+/* ---------- หัวหน้า ---------- */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
+.topbar h1 {
+  font-family: var(--display); font-weight: 700; font-size: 1.6rem; line-height: 1.25; margin: 0;
+  color: var(--yellow);
+  text-shadow: 3px 3px 0 #000;
+}
+.topbar h1::before { content: "▶"; display: inline-block; margin-right: 10px; color: var(--pink); animation: blink 1s steps(2, jump-none) infinite; }
+.topbar .branch {
+  font-family: var(--pixel); font-size: .8rem; line-height: 1.6; font-weight: 700;
+  color: var(--ink); background: var(--cyan);
+  border: var(--px) solid #000; padding: 6px 12px;
+  box-shadow: 4px 4px 0 #000;
+}
+.topbar .branch:empty { display: none; }
+.topbar .muted { color: #cfc8ff; }
 
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
-.panel + .panel { margin-top: 16px; }
-.panel h2 { font-family: var(--display); font-size: 1.3rem; line-height: 1.35; margin: 0 0 10px; }
+/* ---------- กล่อง ---------- */
+.panel, .stage {
+  background: var(--paper);
+  border: var(--px) solid #000;
+  box-shadow: 8px 8px 0 #000;
+  padding: 22px;
+}
+.panel + .panel { margin-top: 22px; }
+.panel h2, .stage h2 { font-family: var(--display); font-weight: 700; font-size: 1.35rem; line-height: 1.35; margin: 0 0 12px; }
 .muted { color: var(--ink-soft); }
 .center { text-align: center; }
 
-label { display: block; font-weight: 600; margin-bottom: 6px; }
+label { display: block; font-weight: 700; margin-bottom: 6px; }
 input[type=text], input[type=email], input[type=password], select {
-  width: 100%; font: inherit; color: inherit; background: var(--bg);
-  border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px;
+  width: 100%; font: inherit; font-weight: 600; color: var(--ink); background: #fff;
+  border: var(--px) solid #000; border-radius: 0; padding: 11px 14px;
+  box-shadow: inset 4px 4px 0 #e4dcc0;
 }
+input:focus, select:focus { outline: none; background: #fffbe9; box-shadow: inset 4px 4px 0 #e4dcc0, 0 0 0 4px var(--cyan); }
+
+/* ---------- ปุ่ม: กดแล้วยุบลงเหมือนปุ่มเกม ---------- */
 .btn {
   font: inherit; font-weight: 700; cursor: pointer;
-  border: 0; border-radius: 10px; padding: 12px 20px;
-  background: var(--brand); color: var(--brand-ink);
+  border: var(--px) solid #000; border-radius: 0; padding: 10px 18px;
+  background: var(--yellow); color: var(--ink);
+  box-shadow: 4px 4px 0 #000;
+  transition: none;
 }
-.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn:hover:not(:disabled) { filter: brightness(1.08); }
+.btn:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: 0 0 0 #000; }
+.btn.ghost { background: #fff; color: var(--ink); }
 .btn.danger { background: var(--bad); color: #fff; }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
-:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
-.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-.error { color: var(--bad); font-weight: 600; margin-top: 10px; }
+.btn:disabled { background: #d9d2bb; color: #8d8672; box-shadow: 4px 4px 0 #8d8672; border-color: #8d8672; cursor: not-allowed; }
+.btn:focus-visible, .opt:focus-visible, .tab:focus-visible { outline: 4px solid var(--cyan); outline-offset: 3px; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.error {
+  margin-top: 14px; padding: 10px 12px; font-weight: 700;
+  color: #fff; background: var(--bad); border: var(--px) solid #000;
+}
 
-/* วิดีโอ */
-.video { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 14px; overflow: hidden; }
-.video iframe, .video > div { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* ---------- วิดีโอ ---------- */
+.video { position: relative; aspect-ratio: 16 / 9; background: #000; border: var(--px) solid #000; overflow: hidden; }
+.video iframe, .video > div, .video > video { position: absolute; inset: 0; width: 100%; height: 100%; }
+.note { margin-top: 12px; color: var(--ink-soft); font-weight: 600; }
 
-/* แถบเวลา */
-.timer { display: flex; align-items: center; gap: 12px; margin: 14px 0 16px; }
-.timer .num { font-family: var(--display); font-size: 1.8rem; font-weight: 700; min-width: 2.2ch; text-align: right; }
-.timer .track { flex: 1; height: 10px; background: var(--line); border-radius: 99px; overflow: hidden; }
-.timer .fill { height: 100%; width: 100%; background: var(--brand); transform-origin: left; }
+/* ---------- ตัวจับเวลา: หลอดพลังแบบเกม ---------- */
+.timer { display: flex; align-items: center; gap: 14px; margin: 16px 0 18px; }
+.timer .num {
+  font-family: var(--pixel); font-size: 1.5rem; line-height: 1; min-width: 3ch; text-align: center;
+  color: var(--yellow); background: var(--ink); border: var(--px) solid #000; padding: 10px 8px;
+}
+.timer .track { position: relative; flex: 1; height: 26px; background: var(--ink); border: var(--px) solid #000; overflow: hidden; }
+.timer .fill { height: 100%; width: 100%; background: linear-gradient(180deg, #7dff9b 0 50%, #19b36b 50% 100%); transform-origin: left; }
+.timer .track::after {  /* เส้นแบ่งช่อง ทำให้ดูเป็นบล็อก */
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 14px, var(--ink) 14px 18px);
+}
 
-/* ปุ่มตัวเลือก */
-.options { display: grid; gap: 12px; }
+/* ---------- ปุ่มตัวเลือก (มือถือ) ---------- */
+.options { display: grid; gap: 16px; }
 @media (min-width: 620px) { .options { grid-template-columns: 1fr 1fr; } }
 .opt {
-  display: flex; gap: 14px; align-items: flex-start; text-align: left;
+  display: flex; gap: 14px; align-items: center; text-align: left;
   font: inherit; color: #fff; cursor: pointer;
-  border: 0; border-radius: 14px; padding: 16px; min-height: 96px;
+  border: var(--px) solid #000; border-radius: 0; padding: 14px; min-height: 92px;
+  box-shadow: 6px 6px 0 #000;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, .35);
 }
-.opt .key {
-  flex: none; width: 44px; height: 44px; border-radius: 10px;
-  background: rgba(255,255,255,.22);
-  display: grid; place-items: center;
-  font-family: var(--display); font-size: 1.4rem; font-weight: 700;
+.opt:active:not(:disabled) { transform: translate(6px, 6px); box-shadow: 0 0 0 #000; }
+.opt .key, .tile .key {
+  flex: none; width: 48px; height: 48px;
+  background: #fff; color: var(--ink); border: var(--px) solid #000;
+  display: grid; place-items: center; text-shadow: none;
+  font-family: var(--pixel); font-size: 1.15rem; font-weight: 700; line-height: 1;
 }
-.opt .txt { font-weight: 600; line-height: 1.5; }
+.opt .txt { font-weight: 700; line-height: 1.45; }
 .opt:disabled { cursor: not-allowed; }
-.opt.dim { opacity: .35; }
-.opt.picked { box-shadow: 0 0 0 4px var(--ink); }
+.opt.dim, .tile.dim { filter: grayscale(.85) brightness(.75); opacity: .55; box-shadow: 3px 3px 0 #000; }
+.opt.picked { outline: 4px solid var(--yellow); outline-offset: 3px; }
 .c0 { background: var(--opt-0); } .c1 { background: var(--opt-1); }
 .c2 { background: var(--opt-2); } .c3 { background: var(--opt-3); }
 
-/* รอ */
-.pulse { width: 14px; height: 14px; border-radius: 50%; background: var(--brand); display: inline-block; margin-right: 8px; animation: pulse 1.4s ease-in-out infinite; }
-@keyframes pulse { 50% { opacity: .25; transform: scale(.7); } }
-@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+/* ---------- หน้ารอ ---------- */
+.pulse { width: 16px; height: 16px; background: var(--pink); border: 3px solid #000; display: inline-block; margin-right: 12px; vertical-align: -1px; animation: hop .8s steps(2, jump-none) infinite; }
+@keyframes hop { 0% { transform: translateY(0); } 100% { transform: translateY(-8px); } }
+@keyframes blink { 0% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes pop { 0% { transform: scale(.4); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
 
-.result { font-family: var(--display); font-size: 2rem; font-weight: 700; margin: 4px 0; }
-.result.ok { color: var(--ok); } .result.bad { color: var(--bad); }
-.score { font-family: var(--display); font-size: 3.2rem; font-weight: 700; line-height: 1.1; }
+/* ---------- ผลลัพธ์ ---------- */
+.result {
+  display: inline-block; margin: 6px 0 14px; padding: 8px 18px;
+  font-family: var(--display); font-size: 1.7rem; font-weight: 700; line-height: 1.3;
+  color: var(--ink); background: #fff; border: var(--px) solid #000; box-shadow: 4px 4px 0 #000;
+  animation: pop .35s steps(5) both;
+}
+.result.ok { background: var(--ok); color: #fff; }
+.result.bad { background: var(--bad); color: #fff; }
+.score {
+  font-family: var(--pixel); font-size: 2.6rem; line-height: 1.2; color: var(--ink);
+  text-shadow: 4px 4px 0 var(--yellow);
+}
+.center p { font-weight: 700; margin: 10px 0 0; }
 
-.picker a { display: block; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; color: inherit; text-decoration: none; font-weight: 600; }
-.picker a + a { margin-top: 8px; }
-.picker a span { color: var(--ink-soft); font-weight: 400; margin-left: 8px; }
+/* ---------- เลือกสาขา ---------- */
+.picker a {
+  display: block; padding: 12px 16px; color: var(--ink); text-decoration: none; font-weight: 700;
+  background: #fff; border: var(--px) solid #000; box-shadow: 4px 4px 0 #000;
+  font-family: var(--pixel); font-size: .9rem; line-height: 1.8;
+}
+.picker a + a { margin-top: 14px; }
+.picker a:active { transform: translate(4px, 4px); box-shadow: none; }
+.picker a span { font-family: var(--body); font-size: 1rem; color: var(--ink-soft); margin-left: 10px; }
 
-/* admin */
-.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-.tab { font: inherit; font-family: var(--display); font-weight: 700; cursor: pointer; padding: 8px 18px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
-.tab[aria-selected=true] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-.grid { display: grid; gap: 16px; }
-@media (min-width: 900px) { .grid { grid-template-columns: 1.25fr 1fr; align-items: start; } }
-.phase { font-family: var(--display); font-weight: 700; padding: 4px 14px; border-radius: 99px; background: var(--line); }
+/* ---------- admin: แท็บสาขา ---------- */
+.tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.tab {
+  font-family: var(--pixel); font-size: .8rem; line-height: 1.4; cursor: pointer;
+  padding: 10px 14px; border: var(--px) solid #000; border-radius: 0;
+  background: #fff; color: var(--ink); box-shadow: 4px 4px 0 #000;
+}
+.tab[aria-selected=true] { background: var(--pink); color: #fff; transform: translate(4px, 4px); box-shadow: none; text-shadow: 2px 2px 0 #000; }
+.phase {
+  font-family: var(--display); font-weight: 700; padding: 6px 14px;
+  background: #fff; color: var(--ink); border: var(--px) solid #000; box-shadow: 4px 4px 0 #000;
+}
 .phase.open { background: var(--ok); color: #fff; }
-.phase.reveal { background: var(--brand); color: var(--brand-ink); }
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
-.stat { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
-.stat b { display: block; font-family: var(--display); font-size: 2rem; line-height: 1.1; }
-.stat span { color: var(--ink-soft); font-size: .9rem; }
-.bar { margin-top: 12px; }
-.bar .head { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; }
-.bar .head .t { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.bar .track { height: 26px; background: var(--line); border-radius: 8px; overflow: hidden; margin-top: 4px; }
-.bar .fill { height: 100%; width: 0; transition: width .3s ease; }
-.bar.correct .head { color: var(--ok); }
-.board { width: 100%; border-collapse: collapse; }
-.board th, .board td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
-.board th { color: var(--ink-soft); font-weight: 600; font-size: .9rem; }
-.board td.n, .board th.n { text-align: right; font-variant-numeric: tabular-nums; }
-.board td.n { font-family: var(--display); font-weight: 700; }
-.link { word-break: break-all; font-size: .92rem; }
+.phase.closed { background: var(--yellow); }
+.phase.reveal { background: var(--cyan); }
 
-/* จอฉาย (หน้า admin บนโปรเจกเตอร์) */
-.stage { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px; }
-.stage:fullscreen { border-radius: 0; border: 0; padding: 4vh 4vw; overflow: auto; display: flex; flex-direction: column; justify-content: center; }
-.stage h2 { font-family: var(--display); font-size: clamp(1.4rem, 2.6vw, 2.4rem); line-height: 1.35; margin: 0 0 16px; }
+/* ---------- admin: จอฉาย ---------- */
+.stage { padding: 26px; }
+.stage:fullscreen {
+  border: 0; box-shadow: none; padding: 4vh 4vw; overflow: auto;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.stage h2 { font-size: clamp(1.4rem, 2.6vw, 2.4rem); margin: 0 0 18px; }
 .stage .video { max-height: 78vh; margin: 0 auto; }
 .stage:fullscreen .video { max-height: 90vh; width: min(100%, 160vh); }
-.note { margin-top: 10px; color: var(--ink-soft); }
 
-.qrwrap { display: grid; gap: 28px; align-items: center; justify-items: center; }
+.qrwrap { display: grid; gap: 32px; align-items: center; justify-items: center; }
 @media (min-width: 860px) { .qrwrap { grid-template-columns: auto 1fr; justify-items: start; } }
-.qr { background: #fff; padding: 16px; border-radius: 14px; line-height: 0; }
-.qr img, .qr canvas { width: min(60vh, 78vw, 440px) !important; height: auto !important; }
-.qrtext .big { font-family: var(--display); font-weight: 700; font-size: clamp(1.8rem, 4vw, 3.4rem); line-height: 1.2; margin: 0 0 10px; }
-.qrtext .count { font-family: var(--display); font-weight: 700; font-size: clamp(2.4rem, 6vw, 4.6rem); line-height: 1; }
+.qr { background: #fff; padding: 16px; border: var(--px) solid #000; box-shadow: 8px 8px 0 var(--pink); line-height: 0; }
+.qr img, .qr canvas { width: min(60vh, 78vw, 440px) !important; height: auto !important; image-rendering: pixelated; }
+.qrtext .big {
+  font-family: var(--display); font-weight: 700; font-size: clamp(1.8rem, 4vw, 3.4rem); line-height: 1.25; margin: 0 0 10px;
+  color: var(--ink); text-shadow: 4px 4px 0 var(--yellow);
+}
+.qrtext .count { font-family: var(--display); font-weight: 700; font-size: clamp(1.6rem, 3vw, 2.4rem); line-height: 1.2; }
+.qrtext .count span { font-family: var(--pixel); font-size: clamp(2.2rem, 5.5vw, 4.4rem); color: var(--opt-1); text-shadow: 4px 4px 0 #000; margin-right: 12px; }
+.link { word-break: break-all; font-size: .92rem; }
 
 .livehead { display: flex; gap: 20px; justify-content: space-between; align-items: flex-start; }
-.qr.small { padding: 8px; border-radius: 10px; flex: none; text-align: center; }
+.qr.small { padding: 8px; flex: none; text-align: center; box-shadow: 4px 4px 0 var(--pink); }
 .qr.small img, .qr.small canvas { width: 120px !important; }
-.tiles { display: grid; gap: 12px; }
+.tiles { display: grid; gap: 16px; }
 @media (min-width: 760px) { .tiles { grid-template-columns: 1fr 1fr; } }
-.tile { display: flex; gap: 14px; align-items: flex-start; color: #fff; border-radius: 14px; padding: 18px; font-weight: 600; font-size: clamp(1rem, 1.6vw, 1.4rem); line-height: 1.5; }
-.tile .key { flex: none; width: 48px; height: 48px; border-radius: 10px; background: rgba(255,255,255,.22); display: grid; place-items: center; font-family: var(--display); font-size: 1.5rem; font-weight: 700; }
-.tile .n { margin-left: auto; flex: none; font-family: var(--display); font-size: 1.8rem; font-weight: 700; padding-left: 12px; }
-.tile.dim { opacity: .3; }
-.answered { font-family: var(--display); font-weight: 700; font-size: clamp(1.3rem, 2.4vw, 2rem); margin-top: 16px; }
-.stage .board { margin-top: 20px; font-size: clamp(1rem, 1.5vw, 1.3rem); }
-details.settings { margin-top: 16px; }
-details.settings summary { cursor: pointer; font-weight: 600; }
+.tile {
+  display: flex; gap: 14px; align-items: center; color: #fff;
+  border: var(--px) solid #000; box-shadow: 6px 6px 0 #000; padding: 16px;
+  font-weight: 700; font-size: clamp(1rem, 1.6vw, 1.4rem); line-height: 1.45;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, .35);
+}
+.tile .n {
+  margin-left: auto; flex: none; text-shadow: none;
+  font-family: var(--pixel); font-size: 1.3rem; line-height: 1; color: var(--yellow);
+  background: var(--ink); border: var(--px) solid #000; padding: 10px;
+}
+.answered {
+  display: inline-block; margin-top: 20px; padding: 8px 16px;
+  font-family: var(--display); font-weight: 700; font-size: clamp(1.2rem, 2.2vw, 1.8rem);
+  background: var(--ink); color: var(--yellow); border: var(--px) solid #000;
+}
+
+/* ---------- ตารางคะแนน ---------- */
+.board { width: 100%; border-collapse: collapse; margin-top: 22px; font-size: clamp(1rem, 1.5vw, 1.3rem); border: var(--px) solid #000; background: #fff; }
+.board th, .board td { text-align: left; padding: 10px 12px; border-bottom: 3px solid #000; font-weight: 700; }
+.board th { background: var(--ink); color: var(--yellow); font-size: .9em; }
+.board td:first-child { font-family: var(--pixel); font-size: .85em; width: 4.5em; }
+.board td.n, .board th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.board td.n { font-family: var(--pixel); font-size: .9em; }
+.board tbody tr:nth-child(1) td { background: #ffe066; }
+.board tbody tr:nth-child(2) td { background: #e4e9f2; }
+.board tbody tr:nth-child(3) td { background: #ffc9a3; }
+.board tbody tr:last-child td { border-bottom: 0; }
+
+details.settings { margin-top: 18px; }
+details.settings summary { cursor: pointer; font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse, .result, .topbar h1::before { animation: none; }
+}
+@media (max-width: 480px) {
+  .topbar h1 { font-size: 1.3rem; }
+  .panel, .stage { padding: 16px; box-shadow: 6px 6px 0 #000; }
+  .score { font-size: 2rem; }
+}
+
+/* ---------- ฉากเกม: พื้นด้านล่าง ตัวเดินบนพื้น ตัวบินด้านบน ---------- */
+.wrap { position: relative; z-index: 1; padding-top: 64px; padding-bottom: 150px; }
+body::after {  /* พื้นหญ้าและดิน */
+  content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: 56px; z-index: 0; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2248%22 height=%2256%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%220%22 y=%220%22 width=%224%22 height=%224%22 fill=%22%237dff9b%22/%3E%3Crect x=%224%22 y=%220%22 width=%224%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%228%22 y=%220%22 width=%228%22 height=%224%22 fill=%22%237dff9b%22/%3E%3Crect x=%2216%22 y=%220%22 width=%224%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2220%22 y=%220%22 width=%224%22 height=%224%22 fill=%22%237dff9b%22/%3E%3Crect x=%2224%22 y=%220%22 width=%224%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2228%22 y=%220%22 width=%228%22 height=%224%22 fill=%22%237dff9b%22/%3E%3Crect x=%2236%22 y=%220%22 width=%224%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2240%22 y=%220%22 width=%224%22 height=%224%22 fill=%22%237dff9b%22/%3E%3Crect x=%2244%22 y=%220%22 width=%224%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%220%22 y=%224%22 width=%2248%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%220%22 y=%228%22 width=%224%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%224%22 y=%228%22 width=%224%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%228%22 y=%228%22 width=%224%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%2212%22 y=%228%22 width=%228%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2220%22 y=%228%22 width=%224%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%2224%22 y=%228%22 width=%224%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2228%22 y=%228%22 width=%224%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%2232%22 y=%228%22 width=%228%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2240%22 y=%228%22 width=%224%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%2244%22 y=%228%22 width=%224%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%220%22 y=%2212%22 width=%2248%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%220%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%224%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%23a06a36%22/%3E%3Crect x=%228%22 y=%2216%22 width=%2216%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%2224%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%236b4320%22/%3E%3Crect x=%2228%22 y=%2216%22 width=%2220%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%220%22 y=%2220%22 width=%2236%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%2236%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%23a06a36%22/%3E%3Crect x=%2240%22 y=%2220%22 width=%228%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%220%22 y=%2224%22 width=%228%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%228%22 y=%2224%22 width=%224%22 height=%224%22 fill=%22%236b4320%22/%3E%3Crect x=%2212%22 y=%2224%22 width=%2236%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%220%22 y=%2228%22 width=%2220%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%2220%22 y=%2228%22 width=%224%22 height=%224%22 fill=%22%23a06a36%22/%3E%3Crect x=%2224%22 y=%2228%22 width=%2216%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%2240%22 y=%2228%22 width=%224%22 height=%224%22 fill=%22%236b4320%22/%3E%3Crect x=%2244%22 y=%2228%22 width=%224%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%220%22 y=%2232%22 width=%2248%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%220%22 y=%2236%22 width=%224%22 height=%224%22 fill=%22%236b4320%22/%3E%3Crect x=%224%22 y=%2236%22 width=%2212%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%2216%22 y=%2236%22 width=%224%22 height=%224%22 fill=%22%23a06a36%22/%3E%3Crect x=%2220%22 y=%2236%22 width=%2228%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%220%22 y=%2240%22 width=%2232%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%2232%22 y=%2240%22 width=%224%22 height=%224%22 fill=%22%236b4320%22/%3E%3Crect x=%2236%22 y=%2240%22 width=%2212%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%220%22 y=%2244%22 width=%2248%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%220%22 y=%2248%22 width=%228%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%228%22 y=%2248%22 width=%224%22 height=%224%22 fill=%22%23a06a36%22/%3E%3Crect x=%2212%22 y=%2248%22 width=%2236%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%220%22 y=%2252%22 width=%2224%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%2224%22 y=%2252%22 width=%224%22 height=%224%22 fill=%22%236b4320%22/%3E%3Crect x=%2228%22 y=%2252%22 width=%2212%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3Crect x=%2240%22 y=%2252%22 width=%224%22 height=%224%22 fill=%22%23a06a36%22/%3E%3Crect x=%2244%22 y=%2252%22 width=%224%22 height=%224%22 fill=%22%238a5a2b%22/%3E%3C/svg%3E") repeat-x left top / 48px 56px;
+  border-top: 4px solid #000;
+}
+html::after {  /* สไลม์ หุ่นยนต์ ลูกเจี๊ยบ เดินไปทางขวา */
+  content: ""; position: fixed; left: 0; right: 0; bottom: 56px; height: 40px; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22900%22 height=%2280%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%2242%22 y=%228%22 width=%2216%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2238%22 y=%2212%22 width=%224%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2242%22 y=%2212%22 width=%228%22 height=%224%22 fill=%22%237dff9b%22/%3E%3Crect x=%2250%22 y=%2212%22 width=%2212%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2234%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2238%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%237dff9b%22/%3E%3Crect x=%2242%22 y=%2216%22 width=%2224%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2234%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2238%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%23ffffff%22/%3E%3Crect x=%2242%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%2246%22 y=%2220%22 width=%228%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2254%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%23ffffff%22/%3E%3Crect x=%2258%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%2262%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2230%22 y=%2224%22 width=%2240%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2230%22 y=%2228%22 width=%2240%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2230%22 y=%2232%22 width=%224%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%2234%22 y=%2232%22 width=%2232%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2266%22 y=%2232%22 width=%224%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%2234%22 y=%2236%22 width=%228%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%2246%22 y=%2236%22 width=%228%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%2258%22 y=%2236%22 width=%228%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%2242%22 y=%2252%22 width=%2216%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2234%22 y=%2256%22 width=%224%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2238%22 y=%2256%22 width=%228%22 height=%224%22 fill=%22%237dff9b%22/%3E%3Crect x=%2246%22 y=%2256%22 width=%2220%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2230%22 y=%2260%22 width=%228%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2238%22 y=%2260%22 width=%224%22 height=%224%22 fill=%22%23ffffff%22/%3E%3Crect x=%2242%22 y=%2260%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%2246%22 y=%2260%22 width=%228%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2254%22 y=%2260%22 width=%224%22 height=%224%22 fill=%22%23ffffff%22/%3E%3Crect x=%2258%22 y=%2260%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%2262%22 y=%2260%22 width=%228%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2230%22 y=%2264%22 width=%2240%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2230%22 y=%2268%22 width=%2240%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2230%22 y=%2272%22 width=%224%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%2234%22 y=%2272%22 width=%2232%22 height=%224%22 fill=%22%233ddc6b%22/%3E%3Crect x=%2266%22 y=%2272%22 width=%224%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%2230%22 y=%2276%22 width=%228%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%2242%22 y=%2276%22 width=%228%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%2254%22 y=%2276%22 width=%228%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%2266%22 y=%2276%22 width=%224%22 height=%224%22 fill=%22%2319a34a%22/%3E%3Crect x=%22346%22 y=%220%22 width=%224%22 height=%224%22 fill=%22%23ff4757%22/%3E%3Crect x=%22346%22 y=%224%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22334%22 y=%228%22 width=%2228%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22334%22 y=%2212%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22338%22 y=%2212%22 width=%2220%22 height=%224%22 fill=%22%2335d6ff%22/%3E%3Crect x=%22358%22 y=%2212%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22334%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22338%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%2335d6ff%22/%3E%3Crect x=%22342%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%23ffffff%22/%3E%3Crect x=%22346%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%2335d6ff%22/%3E%3Crect x=%22350%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%23ffffff%22/%3E%3Crect x=%22354%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%2335d6ff%22/%3E%3Crect x=%22358%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22334%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22338%22 y=%2220%22 width=%2220%22 height=%224%22 fill=%22%2335d6ff%22/%3E%3Crect x=%22358%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22334%22 y=%2224%22 width=%2228%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22330%22 y=%2228%22 width=%224%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22338%22 y=%2228%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22342%22 y=%2228%22 width=%2212%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22354%22 y=%2228%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22362%22 y=%2228%22 width=%224%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22338%22 y=%2232%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22342%22 y=%2232%22 width=%2212%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22354%22 y=%2232%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22334%22 y=%2236%22 width=%228%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22354%22 y=%2236%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22346%22 y=%2240%22 width=%224%22 height=%224%22 fill=%22%23ff4757%22/%3E%3Crect x=%22346%22 y=%2244%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22334%22 y=%2248%22 width=%2228%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22334%22 y=%2252%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22338%22 y=%2252%22 width=%2220%22 height=%224%22 fill=%22%2335d6ff%22/%3E%3Crect x=%22358%22 y=%2252%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22334%22 y=%2256%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22338%22 y=%2256%22 width=%224%22 height=%224%22 fill=%22%2335d6ff%22/%3E%3Crect x=%22342%22 y=%2256%22 width=%224%22 height=%224%22 fill=%22%23ffffff%22/%3E%3Crect x=%22346%22 y=%2256%22 width=%224%22 height=%224%22 fill=%22%2335d6ff%22/%3E%3Crect x=%22350%22 y=%2256%22 width=%224%22 height=%224%22 fill=%22%23ffffff%22/%3E%3Crect x=%22354%22 y=%2256%22 width=%224%22 height=%224%22 fill=%22%2335d6ff%22/%3E%3Crect x=%22358%22 y=%2256%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22334%22 y=%2260%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22338%22 y=%2260%22 width=%2220%22 height=%224%22 fill=%22%2335d6ff%22/%3E%3Crect x=%22358%22 y=%2260%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22334%22 y=%2264%22 width=%2228%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22334%22 y=%2268%22 width=%224%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22338%22 y=%2268%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22342%22 y=%2268%22 width=%2212%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22354%22 y=%2268%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22358%22 y=%2268%22 width=%224%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22338%22 y=%2272%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22342%22 y=%2272%22 width=%2212%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22354%22 y=%2272%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22338%22 y=%2276%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22354%22 y=%2276%22 width=%228%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22652%22 y=%224%22 width=%2216%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22648%22 y=%228%22 width=%2224%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22648%22 y=%2212%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22656%22 y=%2212%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22660%22 y=%2212%22 width=%2212%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22672%22 y=%2212%22 width=%224%22 height=%224%22 fill=%22%23e0863c%22/%3E%3Crect x=%22644%22 y=%2216%22 width=%2228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22640%22 y=%2220%22 width=%2232%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22640%22 y=%2224%22 width=%224%22 height=%224%22 fill=%22%23d99400%22/%3E%3Crect x=%22644%22 y=%2224%22 width=%2228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22644%22 y=%2228%22 width=%224%22 height=%224%22 fill=%22%23d99400%22/%3E%3Crect x=%22648%22 y=%2228%22 width=%2220%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22648%22 y=%2232%22 width=%224%22 height=%224%22 fill=%22%23e0863c%22/%3E%3Crect x=%22664%22 y=%2232%22 width=%224%22 height=%224%22 fill=%22%23e0863c%22/%3E%3Crect x=%22644%22 y=%2236%22 width=%228%22 height=%224%22 fill=%22%23e0863c%22/%3E%3Crect x=%22652%22 y=%2244%22 width=%2216%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22648%22 y=%2248%22 width=%2224%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22648%22 y=%2252%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22656%22 y=%2252%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22660%22 y=%2252%22 width=%2212%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22672%22 y=%2252%22 width=%224%22 height=%224%22 fill=%22%23e0863c%22/%3E%3Crect x=%22644%22 y=%2256%22 width=%2228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22640%22 y=%2260%22 width=%2232%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22640%22 y=%2264%22 width=%224%22 height=%224%22 fill=%22%23d99400%22/%3E%3Crect x=%22644%22 y=%2264%22 width=%2228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22644%22 y=%2268%22 width=%224%22 height=%224%22 fill=%22%23d99400%22/%3E%3Crect x=%22648%22 y=%2268%22 width=%2220%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22648%22 y=%2272%22 width=%224%22 height=%224%22 fill=%22%23e0863c%22/%3E%3Crect x=%22664%22 y=%2272%22 width=%224%22 height=%224%22 fill=%22%23e0863c%22/%3E%3Crect x=%22664%22 y=%2276%22 width=%228%22 height=%224%22 fill=%22%23e0863c%22/%3E%3C/svg%3E");
+  background-repeat: repeat-x; background-size: 900px 80px;
+  animation: walk-x 36s linear infinite, frame-walk .5s steps(2) infinite;
+}
+html::before {  /* นกและผึ้ง บินไปทางซ้าย */
+  content: ""; position: fixed; left: 0; right: 0; top: 14px; height: 32px; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22720%22 height=%2264%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%2264%22 y=%220%22 width=%228%22 height=%224%22 fill=%22%23ff5fa8%22/%3E%3Crect x=%2260%22 y=%224%22 width=%2216%22 height=%224%22 fill=%22%23ff5fa8%22/%3E%3Crect x=%2248%22 y=%228%22 width=%2228%22 height=%224%22 fill=%22%23ff5fa8%22/%3E%3Crect x=%2240%22 y=%2212%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%2248%22 y=%2212%22 width=%224%22 height=%224%22 fill=%22%23ff5fa8%22/%3E%3Crect x=%2252%22 y=%2212%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%2256%22 y=%2212%22 width=%2228%22 height=%224%22 fill=%22%23ff5fa8%22/%3E%3Crect x=%2248%22 y=%2216%22 width=%2232%22 height=%224%22 fill=%22%23ff5fa8%22/%3E%3Crect x=%2252%22 y=%2220%22 width=%2224%22 height=%224%22 fill=%22%23ff5fa8%22/%3E%3Crect x=%2256%22 y=%2224%22 width=%224%22 height=%224%22 fill=%22%23c2307a%22/%3E%3Crect x=%2268%22 y=%2224%22 width=%224%22 height=%224%22 fill=%22%23c2307a%22/%3E%3Crect x=%2248%22 y=%2240%22 width=%2228%22 height=%224%22 fill=%22%23ff5fa8%22/%3E%3Crect x=%2240%22 y=%2244%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%2248%22 y=%2244%22 width=%224%22 height=%224%22 fill=%22%23ff5fa8%22/%3E%3Crect x=%2252%22 y=%2244%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%2256%22 y=%2244%22 width=%2228%22 height=%224%22 fill=%22%23ff5fa8%22/%3E%3Crect x=%2248%22 y=%2248%22 width=%2232%22 height=%224%22 fill=%22%23ff5fa8%22/%3E%3Crect x=%2252%22 y=%2252%22 width=%2224%22 height=%224%22 fill=%22%23ff5fa8%22/%3E%3Crect x=%2256%22 y=%2256%22 width=%224%22 height=%224%22 fill=%22%23c2307a%22/%3E%3Crect x=%2260%22 y=%2256%22 width=%228%22 height=%224%22 fill=%22%23ff5fa8%22/%3E%3Crect x=%2268%22 y=%2256%22 width=%224%22 height=%224%22 fill=%22%23c2307a%22/%3E%3Crect x=%2260%22 y=%2260%22 width=%228%22 height=%224%22 fill=%22%23ff5fa8%22/%3E%3Crect x=%22416%22 y=%220%22 width=%228%22 height=%224%22 fill=%22%23ffffff%22/%3E%3Crect x=%22412%22 y=%224%22 width=%2216%22 height=%224%22 fill=%22%23ffffff%22/%3E%3Crect x=%22412%22 y=%228%22 width=%2212%22 height=%224%22 fill=%22%23ffffff%22/%3E%3Crect x=%22404%22 y=%2212%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22412%22 y=%2212%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22416%22 y=%2212%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22424%22 y=%2212%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22428%22 y=%2212%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22400%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22404%22 y=%2216%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22412%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22416%22 y=%2216%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22424%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22428%22 y=%2216%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22436%22 y=%2216%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22400%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%23ffffff%22/%3E%3Crect x=%22404%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22408%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22412%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22416%22 y=%2220%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22424%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22428%22 y=%2220%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22440%22 y=%2220%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22404%22 y=%2224%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22412%22 y=%2224%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22416%22 y=%2224%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22424%22 y=%2224%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22428%22 y=%2224%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22412%22 y=%2240%22 width=%2216%22 height=%224%22 fill=%22%23ffffff%22/%3E%3Crect x=%22404%22 y=%2244%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22412%22 y=%2244%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22416%22 y=%2244%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22424%22 y=%2244%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22428%22 y=%2244%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22400%22 y=%2248%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22404%22 y=%2248%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22412%22 y=%2248%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22416%22 y=%2248%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22424%22 y=%2248%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22428%22 y=%2248%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22436%22 y=%2248%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22400%22 y=%2252%22 width=%224%22 height=%224%22 fill=%22%23ffffff%22/%3E%3Crect x=%22404%22 y=%2252%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22408%22 y=%2252%22 width=%224%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22412%22 y=%2252%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22416%22 y=%2252%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22424%22 y=%2252%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22428%22 y=%2252%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22440%22 y=%2252%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22404%22 y=%2256%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22412%22 y=%2256%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22416%22 y=%2256%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22424%22 y=%2256%22 width=%224%22 height=%224%22 fill=%22%231a1333%22/%3E%3Crect x=%22428%22 y=%2256%22 width=%228%22 height=%224%22 fill=%22%23ffc81a%22/%3E%3Crect x=%22412%22 y=%2260%22 width=%2212%22 height=%224%22 fill=%22%23ffffff%22/%3E%3C/svg%3E");
+  background-repeat: repeat-x; background-size: 720px 64px;
+  animation: fly-x 20s linear infinite, frame-fly .36s steps(2) infinite;
+}
+@keyframes walk-x { from { background-position-x: 0; } to { background-position-x: 900px; } }
+@keyframes fly-x { from { background-position-x: 0; } to { background-position-x: -720px; } }
+@keyframes frame-walk { from { background-position-y: 0; } to { background-position-y: -80px; } }
+@keyframes frame-fly { from { background-position-y: 0; } to { background-position-y: -64px; } }
+@media (prefers-reduced-motion: reduce) { html::before, html::after { animation: none; } }
+
+/* ---------- เหรียญรางวัล 3 อันดับแรก ---------- */
+.board tbody tr:nth-child(-n+3) td:nth-child(2)::before {
+  content: ""; display: inline-block; width: 24px; height: 33px; margin-right: 12px; vertical-align: -9px;
+  background: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2233%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%220%22 y=%220%22 width=%226%22 height=%223%22 fill=%22%23ff4757%22/%3E%3Crect x=%2218%22 y=%220%22 width=%226%22 height=%223%22 fill=%22%2335d6ff%22/%3E%3Crect x=%223%22 y=%223%22 width=%226%22 height=%223%22 fill=%22%23ff4757%22/%3E%3Crect x=%2215%22 y=%223%22 width=%226%22 height=%223%22 fill=%22%2335d6ff%22/%3E%3Crect x=%226%22 y=%226%22 width=%226%22 height=%223%22 fill=%22%23ff4757%22/%3E%3Crect x=%2212%22 y=%226%22 width=%226%22 height=%223%22 fill=%22%2335d6ff%22/%3E%3Crect x=%226%22 y=%229%22 width=%2212%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2212%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%226%22 y=%2212%22 width=%2212%22 height=%223%22 fill=%22%23ffc81a%22/%3E%3Crect x=%2218%22 y=%2212%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%220%22 y=%2215%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2215%22 width=%223%22 height=%223%22 fill=%22%23ffc81a%22/%3E%3Crect x=%226%22 y=%2215%22 width=%223%22 height=%223%22 fill=%22%23fff3b0%22/%3E%3Crect x=%229%22 y=%2215%22 width=%2212%22 height=%223%22 fill=%22%23ffc81a%22/%3E%3Crect x=%2221%22 y=%2215%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%220%22 y=%2218%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2218%22 width=%223%22 height=%223%22 fill=%22%23ffc81a%22/%3E%3Crect x=%226%22 y=%2218%22 width=%223%22 height=%223%22 fill=%22%23fff3b0%22/%3E%3Crect x=%229%22 y=%2218%22 width=%2212%22 height=%223%22 fill=%22%23ffc81a%22/%3E%3Crect x=%2221%22 y=%2218%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%220%22 y=%2221%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2221%22 width=%2212%22 height=%223%22 fill=%22%23ffc81a%22/%3E%3Crect x=%2215%22 y=%2221%22 width=%223%22 height=%223%22 fill=%22%23d99400%22/%3E%3Crect x=%2218%22 y=%2221%22 width=%223%22 height=%223%22 fill=%22%23ffc81a%22/%3E%3Crect x=%2221%22 y=%2221%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%220%22 y=%2224%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2224%22 width=%2212%22 height=%223%22 fill=%22%23ffc81a%22/%3E%3Crect x=%2215%22 y=%2224%22 width=%223%22 height=%223%22 fill=%22%23d99400%22/%3E%3Crect x=%2218%22 y=%2224%22 width=%223%22 height=%223%22 fill=%22%23ffc81a%22/%3E%3Crect x=%2221%22 y=%2224%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2227%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%226%22 y=%2227%22 width=%223%22 height=%223%22 fill=%22%23ffc81a%22/%3E%3Crect x=%229%22 y=%2227%22 width=%229%22 height=%223%22 fill=%22%23d99400%22/%3E%3Crect x=%2218%22 y=%2227%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%226%22 y=%2230%22 width=%2212%22 height=%223%22 fill=%22%231a1333%22/%3E%3C/svg%3E") no-repeat center / contain;
+}
+.board tbody tr:nth-child(2) td:nth-child(2)::before { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2233%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%220%22 y=%220%22 width=%226%22 height=%223%22 fill=%22%23ff4757%22/%3E%3Crect x=%2218%22 y=%220%22 width=%226%22 height=%223%22 fill=%22%2335d6ff%22/%3E%3Crect x=%223%22 y=%223%22 width=%226%22 height=%223%22 fill=%22%23ff4757%22/%3E%3Crect x=%2215%22 y=%223%22 width=%226%22 height=%223%22 fill=%22%2335d6ff%22/%3E%3Crect x=%226%22 y=%226%22 width=%226%22 height=%223%22 fill=%22%23ff4757%22/%3E%3Crect x=%2212%22 y=%226%22 width=%226%22 height=%223%22 fill=%22%2335d6ff%22/%3E%3Crect x=%226%22 y=%229%22 width=%2212%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2212%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%226%22 y=%2212%22 width=%2212%22 height=%223%22 fill=%22%23c9d1e0%22/%3E%3Crect x=%2218%22 y=%2212%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%220%22 y=%2215%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2215%22 width=%223%22 height=%223%22 fill=%22%23c9d1e0%22/%3E%3Crect x=%226%22 y=%2215%22 width=%223%22 height=%223%22 fill=%22%23ffffff%22/%3E%3Crect x=%229%22 y=%2215%22 width=%2212%22 height=%223%22 fill=%22%23c9d1e0%22/%3E%3Crect x=%2221%22 y=%2215%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%220%22 y=%2218%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2218%22 width=%223%22 height=%223%22 fill=%22%23c9d1e0%22/%3E%3Crect x=%226%22 y=%2218%22 width=%223%22 height=%223%22 fill=%22%23ffffff%22/%3E%3Crect x=%229%22 y=%2218%22 width=%2212%22 height=%223%22 fill=%22%23c9d1e0%22/%3E%3Crect x=%2221%22 y=%2218%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%220%22 y=%2221%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2221%22 width=%2212%22 height=%223%22 fill=%22%23c9d1e0%22/%3E%3Crect x=%2215%22 y=%2221%22 width=%223%22 height=%223%22 fill=%22%238d98ad%22/%3E%3Crect x=%2218%22 y=%2221%22 width=%223%22 height=%223%22 fill=%22%23c9d1e0%22/%3E%3Crect x=%2221%22 y=%2221%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%220%22 y=%2224%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2224%22 width=%2212%22 height=%223%22 fill=%22%23c9d1e0%22/%3E%3Crect x=%2215%22 y=%2224%22 width=%223%22 height=%223%22 fill=%22%238d98ad%22/%3E%3Crect x=%2218%22 y=%2224%22 width=%223%22 height=%223%22 fill=%22%23c9d1e0%22/%3E%3Crect x=%2221%22 y=%2224%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2227%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%226%22 y=%2227%22 width=%223%22 height=%223%22 fill=%22%23c9d1e0%22/%3E%3Crect x=%229%22 y=%2227%22 width=%229%22 height=%223%22 fill=%22%238d98ad%22/%3E%3Crect x=%2218%22 y=%2227%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%226%22 y=%2230%22 width=%2212%22 height=%223%22 fill=%22%231a1333%22/%3E%3C/svg%3E"); }
+.board tbody tr:nth-child(3) td:nth-child(2)::before { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2233%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%220%22 y=%220%22 width=%226%22 height=%223%22 fill=%22%23ff4757%22/%3E%3Crect x=%2218%22 y=%220%22 width=%226%22 height=%223%22 fill=%22%2335d6ff%22/%3E%3Crect x=%223%22 y=%223%22 width=%226%22 height=%223%22 fill=%22%23ff4757%22/%3E%3Crect x=%2215%22 y=%223%22 width=%226%22 height=%223%22 fill=%22%2335d6ff%22/%3E%3Crect x=%226%22 y=%226%22 width=%226%22 height=%223%22 fill=%22%23ff4757%22/%3E%3Crect x=%2212%22 y=%226%22 width=%226%22 height=%223%22 fill=%22%2335d6ff%22/%3E%3Crect x=%226%22 y=%229%22 width=%2212%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2212%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%226%22 y=%2212%22 width=%2212%22 height=%223%22 fill=%22%23e0863c%22/%3E%3Crect x=%2218%22 y=%2212%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%220%22 y=%2215%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2215%22 width=%223%22 height=%223%22 fill=%22%23e0863c%22/%3E%3Crect x=%226%22 y=%2215%22 width=%223%22 height=%223%22 fill=%22%23ffc9a3%22/%3E%3Crect x=%229%22 y=%2215%22 width=%2212%22 height=%223%22 fill=%22%23e0863c%22/%3E%3Crect x=%2221%22 y=%2215%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%220%22 y=%2218%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2218%22 width=%223%22 height=%223%22 fill=%22%23e0863c%22/%3E%3Crect x=%226%22 y=%2218%22 width=%223%22 height=%223%22 fill=%22%23ffc9a3%22/%3E%3Crect x=%229%22 y=%2218%22 width=%2212%22 height=%223%22 fill=%22%23e0863c%22/%3E%3Crect x=%2221%22 y=%2218%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%220%22 y=%2221%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2221%22 width=%2212%22 height=%223%22 fill=%22%23e0863c%22/%3E%3Crect x=%2215%22 y=%2221%22 width=%223%22 height=%223%22 fill=%22%23a8561c%22/%3E%3Crect x=%2218%22 y=%2221%22 width=%223%22 height=%223%22 fill=%22%23e0863c%22/%3E%3Crect x=%2221%22 y=%2221%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%220%22 y=%2224%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2224%22 width=%2212%22 height=%223%22 fill=%22%23e0863c%22/%3E%3Crect x=%2215%22 y=%2224%22 width=%223%22 height=%223%22 fill=%22%23a8561c%22/%3E%3Crect x=%2218%22 y=%2224%22 width=%223%22 height=%223%22 fill=%22%23e0863c%22/%3E%3Crect x=%2221%22 y=%2224%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%223%22 y=%2227%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%226%22 y=%2227%22 width=%223%22 height=%223%22 fill=%22%23e0863c%22/%3E%3Crect x=%229%22 y=%2227%22 width=%229%22 height=%223%22 fill=%22%23a8561c%22/%3E%3Crect x=%2218%22 y=%2227%22 width=%223%22 height=%223%22 fill=%22%231a1333%22/%3E%3Crect x=%226%22 y=%2230%22 width=%2212%22 height=%223%22 fill=%22%231a1333%22/%3E%3C/svg%3E"); }
