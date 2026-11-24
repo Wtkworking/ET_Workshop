@@ -250,6 +250,24 @@ input:focus, select:focus { outline: none; background: #fffbe9; box-shadow: inse
   background: var(--ink); color: var(--yellow); border: var(--px) solid #000;
 }
 
+/* ---------- คำถามอภิปราย ---------- */
+.discuss ol, ol.points { margin: 0; padding: 0; list-style: none; counter-reset: pt; display: grid; gap: 14px; }
+.discuss li, ol.points li {
+  counter-increment: pt; display: flex; gap: 14px; align-items: center;
+  background: #fff; border: var(--px) solid #000; box-shadow: 4px 4px 0 #000; padding: 12px 14px;
+  font-weight: 700; line-height: 1.45;
+}
+.discuss li { font-size: clamp(1.1rem, 2vw, 1.7rem); }
+.discuss li::before, ol.points li::before {
+  content: counter(pt); flex: none; width: 44px; height: 44px; display: grid; place-items: center;
+  font-family: var(--pixel); font-size: 1rem; color: var(--ink); background: var(--yellow); border: var(--px) solid #000;
+}
+.discuss li:nth-child(2)::before, ol.points li:nth-child(2)::before { background: var(--cyan); }
+.discuss li:nth-child(3)::before, ol.points li:nth-child(3)::before { background: var(--pink); }
+.discuss li:nth-child(4)::before, ol.points li:nth-child(4)::before { background: #7dff9b; }
+ol.points { margin: 4px 0 16px; }
+.phase.discuss { background: var(--pink); color: #fff; }
+
 /* ---------- ตารางคะแนน ---------- */
 .board { width: 100%; border-collapse: collapse; margin-top: 22px; font-size: clamp(1rem, 1.5vw, 1.3rem); border: var(--px) solid #000; background: #fff; }
 .board th, .board td { text-align: left; padding: 10px 12px; border-bottom: 3px solid #000; font-weight: 700; }

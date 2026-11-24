@@ -16,11 +16,6 @@
     <div class="branch" id="branchName"></div>
   </header>
 
-  <!-- ไม่ได้ระบุสาขาในลิงก์ -->
-  <section class="panel" id="picker" hidden>
-    <h2>เลือกสาขา</h2>
-    <div class="picker" id="pickerList"></div>
-  </section>
 
   <!-- ใส่ชื่อ -->
   <section class="panel" id="join" hidden>
@@ -48,27 +43,10 @@
 (function () {
   var cfg = window.QUIZ_CONFIG;
   var $ = function (id) { return document.getElementById(id); };
-  var bKey = (new URLSearchParams(location.search).get('b') || '').toUpperCase();
-  var branch = cfg.branches[bKey];
+  var SID = 'main';        // ทั้งงานใช้รอบเดียวกัน สแกน QR ครั้งเดียวตอบได้ทุกสาขา
 
   $('title').textContent = cfg.eventTitle;
   document.title = cfg.eventTitle;
-
-  // ---------- ไม่มีสาขาในลิงก์: ให้เลือก ----------
-  if (!branch) {
-    Object.keys(cfg.branches).forEach(function (k) {
-      var a = document.createElement('a');
-      a.href = '?b=' + encodeURIComponent(k);
-      a.textContent = k;
-      var s = document.createElement('span');
-      s.textContent = cfg.branches[k].name;
-      a.appendChild(s);
-      $('pickerList').appendChild(a);
-    });
-    $('picker').hidden = false;
-    return;
-  }
-  $('branchName').textContent = branch.name && branch.name !== bKey ? bKey + ' ' + branch.name : bKey;
 
   // ---------- สถานะของหน้านี้ ----------
   var store = {
@@ -77,27 +55,66 @@
   };
   var uid = null;
   var name = store.get('quiz-name') || '';
-  var session = { phase: 'waiting' };
   var round = null;        // รหัสรอบปัจจุบัน เปลี่ยนเมื่อผู้ดูแลกดเริ่มรอบใหม่
-  var myAnswers = {};      // คำตอบของฉันแยกตามข้อ เช่น { q0: {...}, q1: {...} }
-  var questions = window.quizQuestions(branch);
-  function curKey() { return session.qKey || 'q0'; }
-  function curIndex() { var i = parseInt(curKey().slice(1), 10); return i >= 0 && i < questions.length ? i : 0; }
-  function curQ() { return questions[curIndex()]; }
-  function mine() { return myAnswers[curKey()] || null; }
-  function qTitle() {
-    return (questions.length > 1 ? 'ข้อ ' + (curIndex() + 1) + ' จาก ' + questions.length + ': ' : '') + curQ().question;
-  }
-  function scoreOf(key) {
-    var rev = session.revealed && session.revealed[key], a = myAnswers[key];
-    return rev && a && a.choice === rev.correct ? window.quizScore(a.at, rev.openedAt, rev.duration) : 0;
-  }
+  var myAnswers = {};      // คำตอบของฉันแยกตามข้อ เช่น { 'DIT-q0': { choice, at } }
   var offset = 0;          // ส่วนต่างเวลาเครื่องนี้กับเซิร์ฟเวอร์
   var sending = false;
+  var tick = null;
   var db;
+  var session = normalize(null);
 
   function now() { return Date.now() + offset; }
   function fatal(msg) { $('fatal').textContent = msg; $('fatal').hidden = false; }
+
+  // แปลงข้อมูลรอบจาก Firestore ให้ใช้ง่าย (เวลาเป็นมิลลิวินาที)
+  function normalize(d) {
+    d = d || {};
+    return {
+      phase: d.phase || 'waiting',
+      branch: d.branch || '',
+      qKey: d.qKey || '',
+      openedAt: d.openedAt && d.openedAt.toMillis ? d.openedAt.toMillis() : 0,
+      duration: d.duration || cfg.answerSeconds,
+      correct: d.correct || null,
+      revealed: d.revealed || {},
+      top: d.top || [],
+      final: !!d.final,
+      round: d.round || ''
+    };
+  }
+
+  // คำถามที่กำลังถามอยู่: รหัสข้อมีรูปแบบ "สาขา-qลำดับ" เช่น DIT-q0
+  function current() {
+    var m = /^(.+)-q(\d+)$/.exec(session.qKey);
+    if (!m || !cfg.branches[m[1]]) return null;
+    var list = window.quizQuestions(cfg.branches[m[1]]);
+    var i = Number(m[2]);
+    return list[i] ? { b: m[1], i: i, n: list.length, q: list[i] } : null;
+  }
+  function mine() { return myAnswers[session.qKey] || null; }
+  function qTitle(c) {
+    return c.b + (c.n > 1 ? ' ข้อ ' + (c.i + 1) + ' จาก ' + c.n : '') + ': ' + c.q.question;
+  }
+  function scoreOf(key) {
+    var rev = session.revealed[key], a = myAnswers[key];
+    if (!rev || rev.scored === false || !a || a.choice !== rev.correct) return 0;
+    return window.quizScore(a.at, rev.openedAt, rev.duration);
+  }
+  function totalScore() {
+    var t = 0;
+    Object.keys(session.revealed).forEach(function (k) { t += scoreOf(k); });
+    return t;
+  }
+
+  // คำตอบที่ส่งแล้วเก็บไว้ในเครื่อง เพื่อไม่ต้องอ่านจากฐานข้อมูลซ้ำ
+  var ANS_KEY = 'quiz-ans-' + SID;
+  function loadAnswers(r) {
+    try {
+      var saved = JSON.parse(store.get(ANS_KEY) || 'null');
+      return saved && saved.round === r ? saved.answers : {};
+    } catch (e) { return {}; }
+  }
+  function saveAnswers() { store.set(ANS_KEY, JSON.stringify({ round: round, answers: myAnswers })); }
 
   // ---------- Firebase ----------
   try {
@@ -107,6 +124,7 @@
     fatal('เชื่อมต่อระบบไม่ได้ ตรวจค่า firebase ในไฟล์ quiz-config.js');
     return;
   }
+  var sref = db.collection('sessions').doc(SID);
 
   var started = false;
   firebase.auth().onAuthStateChanged(function (user) {
@@ -120,7 +138,7 @@
     if (started) return;
     started = true;
     uid = user.uid;
-    db.collection('sessions').doc(bKey).onSnapshot(function (snap) {
+    sref.onSnapshot(function (snap) {
       session = normalize(snap.exists ? snap.data() : null);
       if (session.round !== round) {
         // รอบใหม่ (หรือเพิ่งเปิดหน้า): โหลดคำตอบที่เคยส่งในรอบนี้ และลงชื่อเข้าร่วมรอบนี้
@@ -136,33 +154,9 @@
     render();
   });
 
-  // แปลงข้อมูลรอบจาก Firestore ให้ใช้ง่าย (เวลาเป็นมิลลิวินาที)
-  function normalize(d) {
-    d = d || {};
-    return {
-      phase: d.phase || 'waiting',
-      qKey: d.qKey || 'q0',
-      openedAt: d.openedAt && d.openedAt.toMillis ? d.openedAt.toMillis() : 0,
-      duration: d.duration || cfg.answerSeconds,
-      correct: d.correct || null,
-      revealed: d.revealed || {},
-      round: d.round || ''
-    };
-  }
-
-  // คำตอบที่ส่งแล้วเก็บไว้ในเครื่อง เพื่อไม่ต้องอ่านจากฐานข้อมูลซ้ำ
-  var ANS_KEY = 'quiz-ans-' + bKey;
-  function loadAnswers(r) {
-    try {
-      var saved = JSON.parse(store.get(ANS_KEY) || 'null');
-      return saved && saved.round === r ? saved.answers : {};
-    } catch (e) { return {}; }
-  }
-  function saveAnswers() { store.set(ANS_KEY, JSON.stringify({ round: round, answers: myAnswers })); }
-
   function registerPlayer() {
     if (!uid || !round) return;
-    var ref = db.collection('sessions').doc(bKey).collection('players').doc(uid);
+    var ref = sref.collection('players').doc(uid);
     var t0 = Date.now();
     ref.set({ name: name, round: round, joinedAt: firebase.firestore.FieldValue.serverTimestamp() })
       .then(function () { return ref.get({ source: 'server' }); })
@@ -192,8 +186,6 @@
   $('nameInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') join(); });
 
   // ---------- วาดหน้าจอ ----------
-  var tick = null;
-
   function el(tagName, cls, text) {
     var n = document.createElement(tagName);
     if (cls) n.className = cls;
@@ -211,10 +203,10 @@
     return box;
   }
 
-  function optionButtons(opts) {
+  function optionButtons(c, opts) {
     // opts: { disabled, picked, correct }
     var grid = el('div', 'options');
-    curQ().options.forEach(function (o, i) {
+    c.q.options.forEach(function (o, i) {
       var b = el('button', 'opt c' + (i % 4));
       b.type = 'button';
       b.appendChild(el('span', 'key', o.key));
@@ -230,11 +222,11 @@
   }
 
   function submit(key) {
-    if (sending || mine() || !uid || !round) return;
+    if (sending || mine() || !uid || !round || !session.qKey) return;
     sending = true;
     render();
-    var q = curKey(), r = round;
-    var ref = db.collection('sessions').doc(bKey).collection('answers').doc(r + '_' + q + '_' + uid);
+    var q = session.qKey, r = round;
+    var ref = sref.collection('answers').doc(r + '_' + q + '_' + uid);
     var sentAt = now();
     ref.set({
       round: r, q: q, uid: uid, choice: key, name: name,
@@ -265,58 +257,83 @@
     if (tick) { clearInterval(tick); tick = null; }
     var stage = $('stage');
     stage.innerHTML = '';
+    $('branchName').textContent = session.branch || '';
 
     if (!name) {
       $('join').hidden = false; stage.hidden = true;
       return;
     }
     $('join').hidden = true;
+    stage.hidden = false;
 
-    var phase = session.phase || 'waiting';
-    var myAnswer = mine();
-
-    // เฉลยแล้ว: แสดงผลให้ทุกคน
-    if (phase === 'reveal') {
-      stage.hidden = false;
-      stage.appendChild(el('h2', null, qTitle()));
-      var box = el('div', 'center');
-      var pts = scoreOf(curKey());
-      if (!myAnswer) box.appendChild(el('div', 'result', 'ไม่ได้ส่งคำตอบ'));
-      else if (myAnswer.choice === session.correct) box.appendChild(el('div', 'result ok', 'ตอบถูก'));
-      else box.appendChild(el('div', 'result bad', 'ยังไม่ถูก'));
-      box.appendChild(el('div', 'score', String(pts)));
-      box.appendChild(el('div', 'muted', questions.length > 1 ? 'คะแนนข้อนี้' : 'คะแนน'));
-      if (questions.length > 1) {
-        var total = 0;
-        Object.keys(session.revealed || {}).forEach(function (k) { total += scoreOf(k); });
-        box.appendChild(el('p', null, 'คะแนนรวม ' + total));
-      }
-      stage.appendChild(box);
-      stage.appendChild(el('p', 'muted', 'ข้อที่ถูกคือ ' + session.correct));
-      stage.appendChild(optionButtons({ disabled: true, picked: myAnswer && myAnswer.choice, correct: session.correct }));
+    // สาขาอภิปราย: แสดงคำถามให้อ่านตาม ไม่มีการกดตอบ
+    var disc = session.phase === 'discuss' && cfg.branches[session.branch] && cfg.branches[session.branch].discussion;
+    if (disc) {
+      stage.appendChild(el('h2', null, disc.title));
+      var ol = el('ol', 'points');
+      disc.points.forEach(function (t) { ol.appendChild(el('li', null, t)); });
+      stage.appendChild(ol);
+      stage.appendChild(el('p', 'muted', 'ข้อนี้ไม่ต้องกดตอบ ขึ้นมาอภิปรายกันได้เลย'));
+      if (Object.keys(session.revealed).length) stage.appendChild(el('p', null, 'คะแนนรวมของคุณ ' + totalScore()));
       return;
     }
 
-    stage.hidden = false;
+    var c = current();
+    var phase = c && session.phase !== 'discuss' ? session.phase : 'waiting';
+    var myAnswer = mine();
+    var played = Object.keys(session.revealed).length > 0;
 
     if (phase === 'waiting') {
-      stage.appendChild(waiting('เข้าร่วมแล้ว รอผู้ดูแลเปิดรับคำตอบ', 'ตัวเลือกจะขึ้นที่หน้านี้เอง ไม่ต้องรีเฟรช'));
+      if (played) {
+        var w = waiting('รอคำถามถัดไป', 'อยู่หน้านี้ต่อได้เลย ไม่ต้องสแกนใหม่');
+        w.appendChild(el('div', 'score', String(totalScore())));
+        w.appendChild(el('div', 'muted', 'คะแนนรวมตอนนี้'));
+        stage.appendChild(w);
+      } else {
+        stage.appendChild(waiting('เข้าร่วมแล้ว รอผู้ดูแลเปิดรับคำตอบ', 'คำถามจะขึ้นที่หน้านี้เอง ไม่ต้องรีเฟรช'));
+      }
+      return;
+    }
+
+    // เฉลยแล้ว: แสดงผลของข้อนี้และคะแนนรวม
+    if (phase === 'reveal') {
+      var rev = session.revealed[session.qKey] || {};
+      var unscored = rev.scored === false;
+      if (session.final) stage.appendChild(el('h2', 'center', 'สรุปผล'));
+      stage.appendChild(el('h2', null, qTitle(c)));
+      var box = el('div', 'center');
+      if (!myAnswer) box.appendChild(el('div', 'result', 'ไม่ได้ส่งคำตอบ'));
+      else if (myAnswer.choice === session.correct) box.appendChild(el('div', 'result ok', 'ตอบถูก'));
+      else box.appendChild(el('div', 'result bad', 'ยังไม่ถูก'));
+      if (unscored) {
+        box.appendChild(el('p', 'muted', 'ข้อนี้ไม่นับคะแนน'));
+      } else {
+        box.appendChild(el('div', 'score', String(scoreOf(session.qKey))));
+        box.appendChild(el('div', 'muted', 'คะแนนข้อนี้'));
+      }
+      box.appendChild(el('p', null, (session.final ? 'คะแนนรวมทั้งหมด ' : 'คะแนนรวม ') + totalScore()));
+      var rank = -1;
+      session.top.forEach(function (t, i) { if (t.uid === uid) rank = i; });
+      if (rank >= 0) box.appendChild(el('p', null, 'ตอนนี้คุณอยู่อันดับ ' + (rank + 1)));
+      stage.appendChild(box);
+      stage.appendChild(el('p', 'muted', 'ข้อที่ถูกคือ ' + session.correct));
+      stage.appendChild(optionButtons(c, { disabled: true, picked: myAnswer && myAnswer.choice, correct: session.correct }));
       return;
     }
 
     if (phase === 'closed') {
-      stage.appendChild(el('h2', null, qTitle()));
+      stage.appendChild(el('h2', null, qTitle(c)));
       stage.appendChild(waiting('ปิดรับคำตอบแล้ว', myAnswer ? 'ส่งคำตอบข้อ ' + myAnswer.choice + ' แล้ว รอเฉลย' : 'รอเฉลย'));
       return;
     }
 
     // phase === 'open'
-    stage.appendChild(el('h2', null, qTitle()));
-    var endAt = (session.openedAt || now()) + (session.duration || cfg.answerSeconds) * 1000;
+    stage.appendChild(el('h2', null, qTitle(c)));
+    var endAt = (session.openedAt || now()) + session.duration * 1000;
 
     if (myAnswer) {
       stage.appendChild(waiting('ส่งคำตอบข้อ ' + myAnswer.choice + ' แล้ว', 'รอผู้ดูแลเฉลย'));
-      stage.appendChild(optionButtons({ disabled: true, picked: myAnswer.choice }));
+      stage.appendChild(optionButtons(c, { disabled: true, picked: myAnswer.choice }));
       return;
     }
 
@@ -329,13 +346,13 @@
     stage.appendChild(timer);
 
     var timeUp = now() >= endAt;
-    var grid = optionButtons({ disabled: timeUp || sending });
+    var grid = optionButtons(c, { disabled: timeUp || sending });
     stage.appendChild(grid);
 
     function update() {
       var left = Math.max(0, endAt - now());
       num.textContent = Math.ceil(left / 1000);
-      fill.style.transform = 'scaleX(' + (left / ((session.duration || cfg.answerSeconds) * 1000)) + ')';
+      fill.style.transform = 'scaleX(' + (left / (session.duration * 1000)) + ')';
       if (left <= 0) {
         clearInterval(tick); tick = null;
         Array.prototype.forEach.call(grid.children, function (b) { b.disabled = true; b.classList.add('dim'); });

@@ -59,6 +59,12 @@
         </div>
       </div>
 
+      <!-- คำถามอภิปราย (สาขาที่ไม่มีการกดตอบ) -->
+      <div id="discussBox" class="discuss" hidden>
+        <h2 id="discussTitle"></h2>
+        <ol id="discussList"></ol>
+      </div>
+
       <!-- 3) คำถาม ผลตอบ และคะแนน -->
       <div id="liveBox" hidden>
         <div class="livehead">
@@ -91,24 +97,15 @@
       </div>
       <div class="error" id="ctrlError" hidden></div>
 
-      <details class="settings" id="settings">
-        <summary>ตั้งค่าของสาขานี้ (ตั้งก่อนเริ่มฉาย เพราะจอนี้นักเรียนมองเห็น)</summary>
-        <div class="row" style="margin-top:12px">
-          <div style="flex:2; min-width:220px">
-            <label>ข้อที่ถูก</label>
-            <div class="row" id="correctBox"></div>
-          </div>
-          <div style="flex:1; min-width:160px">
-            <label for="secondsSel">เวลาตอบ</label>
-            <select id="secondsSel">
-              <option value="10">10 วินาที</option>
-              <option value="20">20 วินาที</option>
-              <option value="30">30 วินาที</option>
-              <option value="60">60 วินาที</option>
-            </select>
-          </div>
-        </div>
-      </details>
+      <div class="row" style="margin-top:18px">
+        <label for="secondsSel" style="margin:0">เวลาตอบ</label>
+        <select id="secondsSel" style="width:auto">
+          <option value="10">10 วินาที</option>
+          <option value="20">20 วินาที</option>
+          <option value="30">30 วินาที</option>
+          <option value="60">60 วินาที</option>
+        </select>
+      </div>
     </div>
   </section>
 
@@ -120,22 +117,25 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="quiz-config.js"></script>
+<script src="quiz-answers.js"></script>
 <script>
 (function () {
   var cfg = window.QUIZ_CONFIG;
   var $ = function (id) { return document.getElementById(id); };
-  var keys = Object.keys(cfg.branches);
-  var bKey = keys[0];
-  var db, offset = 0, unsubs = [], roundUnsubs = [], listenRound = null, pendingOpen = null;
-  function newRound() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-  var session = { phase: 'waiting' }, players = {}, answers = {}, correctMap = {};
-  var questions = [];
-  function curKey() { return session.qKey || 'q0'; }
-  function curIndex() { var i = parseInt(curKey().slice(1), 10); return i >= 0 && i < questions.length ? i : 0; }
+  var order = window.quizOrder();   // ลำดับสาขา เช่น DIT, CAI, CYB, AME, IEM, RAE
+  var SID = 'main';                 // ทั้งงานใช้รอบเดียวกัน คะแนนสะสมข้ามสาขา
+  var bKey = order[0];              // สาขาที่กำลังแสดงบนจอ
+  var db, sref, offset = 0, unsubs = [], roundUnsubs = [], listenRound = null, pendingOpen = null;
+  var session = blankSession(), players = {}, answers = {}, correctMap = {};
+  var KEY = window.QUIZ_ANSWERS || {};   // เฉลยจากไฟล์ quiz-answers.js
   var showQr = false;       // true = คลิปจบแล้ว กำลังโชว์ QR
   var media = null;         // ตัวเล่นคลิปของสาขาที่เลือก { pause, restart, destroy }
-  var PHASE_LABEL = { waiting: 'รอเริ่ม', open: 'กำลังรับคำตอบ', closed: 'ปิดรับคำตอบแล้ว', reveal: 'เฉลยแล้ว' };
+  var PHASE_LABEL = { waiting: 'รอเริ่ม', open: 'กำลังรับคำตอบ', closed: 'ปิดรับคำตอบแล้ว', reveal: 'เฉลยแล้ว', discuss: 'อภิปราย' };
 
+  function blankSession() {
+    return { phase: 'waiting', branch: '', qKey: '', openedAt: 0, duration: cfg.answerSeconds, correct: null, revealed: {}, final: false, round: '' };
+  }
+  function newRound() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
   function now() { return Date.now() + offset; }
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -144,11 +144,52 @@
     return n;
   }
   function showError(id, msg) { $(id).textContent = msg; $(id).hidden = !msg; }
-  function viewerUrl() { return new URL('index.html?b=' + bKey, location.href).href; }
+  function viewerUrl() { return new URL('index.html', location.href).href; }
+
+  // ---------- คำถาม: รหัสข้อมีรูปแบบ "สาขา-qลำดับ" เช่น DIT-q0 ----------
+  function qs(b) { return window.quizQuestions(cfg.branches[b]); }
+  function keyOf(b, i) { return b + '-q' + i; }
+  function parseKey(k) {
+    var m = /^(.+)-q(\d+)$/.exec(k || '');
+    return m && cfg.branches[m[1]] && qs(m[1])[Number(m[2])] ? { b: m[1], i: Number(m[2]) } : null;
+  }
+  function isScored(b) { return cfg.branches[b].scored !== false; }
+  // ข้อถัดไปของสาขาที่ยังไม่ได้เฉลย (-1 = ถามครบแล้ว หรือสาขานี้ไม่มีคำถาม)
+  function nextIndex(b) {
+    var list = qs(b);
+    for (var i = 0; i < list.length; i++) if (!session.revealed[keyOf(b, i)]) return i;
+    return -1;
+  }
+  function nextBranch(b) { var i = order.indexOf(b); return i >= 0 && i < order.length - 1 ? order[i + 1] : null; }
+  // ข้อสุดท้ายที่นับคะแนน: เฉลยข้อนี้แล้วถือว่าสรุปผล
+  function lastScoredKey() {
+    for (var i = order.length - 1; i >= 0; i--) {
+      if (isScored(order[i]) && qs(order[i]).length) return keyOf(order[i], qs(order[i]).length - 1);
+    }
+    return '';
+  }
+  // คะแนนรวมของทุกคน จากทุกข้อที่เฉลยแล้วและนับคะแนน
+  function totals(revealed) {
+    var t = {};
+    Object.keys(revealed || {}).forEach(function (k) {
+      var rev = revealed[k], list = answers[k] || {};
+      if (rev.scored === false) return;
+      Object.keys(list).forEach(function (id) {
+        var a = list[id];
+        var row = t[id] || (t[id] = { uid: id, name: a.name, score: 0, time: 0 });
+        if (a.choice === rev.correct) row.score += window.quizScore(a.at, rev.openedAt, rev.duration);
+        row.time += Math.max(0, a.at - rev.openedAt);
+      });
+    });
+    var rows = Object.keys(t).map(function (id) { return t[id]; }).filter(function (r) { return r.score > 0; });
+    rows.sort(function (x, y) { return (y.score - x.score) || (x.time - y.time); });
+    return rows;
+  }
 
   try {
     firebase.initializeApp(cfg.firebase);
     db = firebase.firestore();
+    sref = db.collection('sessions').doc(SID);
   } catch (e) {
     showError('fatal', 'เชื่อมต่อระบบไม่ได้ ตรวจค่า firebase ในไฟล์ quiz-config.js');
     return;
@@ -185,8 +226,7 @@
       if (!snap.exists) throw new Error('not-admin');
       $('login').hidden = true; $('app').hidden = false; $('logoutBtn').hidden = false;
       $('who').textContent = user.email;
-      buildTabs();
-      selectBranch(bKey);
+      start();
     }).catch(function (e) {
       var denied = e && /permission/i.test(String(e.code || e.message));
       showError('loginError', denied
@@ -201,7 +241,7 @@
   window.onYouTubeIframeAPIReady = function () { ytReady = true; if (ytQueue) { ytQueue(); ytQueue = null; } };
 
   function onClipEnded() {
-    if ((session.phase || 'waiting') !== 'waiting') return;
+    if (session.phase !== 'waiting') return;
     showQr = true;
     render();
   }
@@ -238,7 +278,6 @@
     } else if (br.videoFile) {
       var v = el('video');
       v.src = br.videoFile; v.controls = true; v.playsInline = true; v.preload = 'metadata';
-      v.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
       v.addEventListener('ended', onClipEnded);
       holder.appendChild(v);
       media = {
@@ -257,8 +296,9 @@
         destroy: function () { f.src = 'about:blank'; }
       };
     } else {
-      holder.appendChild(el('div', 'center muted', 'ยังไม่ได้ใส่คลิปของสาขานี้ใน quiz-config.js'));
-      holder.firstChild.style.cssText = 'position:absolute;inset:0;display:grid;place-items:center;color:#fff';
+      var empty = el('div', 'center', 'ยังไม่ได้ใส่คลิปของสาขานี้ใน quiz-config.js');
+      empty.style.cssText = 'position:absolute;inset:0;display:grid;place-items:center;color:#fff';
+      holder.appendChild(empty);
     }
   }
 
@@ -269,17 +309,37 @@
     new QRCode(target, { text: viewerUrl(), width: size, height: size, correctLevel: QRCode.CorrectLevel.M });
   }
 
-  // ---------- เลือกสาขา ----------
+  // ---------- สาขา ----------
   function buildTabs() {
     $('tabs').innerHTML = '';
-    keys.forEach(function (k) {
+    order.forEach(function (k) {
       var b = el('button', 'tab', k);
       b.type = 'button';
       b.setAttribute('role', 'tab');
       b.dataset.k = k;
-      b.addEventListener('click', function () { selectBranch(k); });
+      b.addEventListener('click', function () {
+        if (k === bKey) return;
+        if (session.phase === 'open' || session.phase === 'closed') {
+          showError('ctrlError', 'ข้อนี้ยังไม่ได้เฉลย กดเฉลยก่อนเปลี่ยนสาขา');
+          return;
+        }
+        setBranch(k, true);
+      });
       $('tabs').appendChild(b);
     });
+  }
+
+  // เปลี่ยนสาขาที่แสดงบนจอ: โหลดคลิปของสาขานั้น และ (ถ้า write) แจ้งมือถือทุกเครื่องให้กลับไปหน้ารอ
+  function setBranch(k, write) {
+    bKey = k;
+    showQr = false;
+    showError('ctrlError', '');
+    Array.prototype.forEach.call($('tabs').children, function (b) {
+      b.setAttribute('aria-selected', b.dataset.k === k ? 'true' : 'false');
+    });
+    mountVideo(cfg.branches[k]);
+    if (write) sref.set({ branch: k, phase: 'waiting', final: false }, { merge: true }).catch(fail);
+    render();
   }
 
   function detachRound() {
@@ -294,19 +354,18 @@
   }
 
   // ฟังรายชื่อผู้เข้าร่วมและคำตอบของรอบปัจจุบันเท่านั้น
-  function watchRound(k, r) {
+  function watchRound(r) {
     detachRound();
     listenRound = r;
     players = {}; answers = {};
-    var base = db.collection('sessions').doc(k);
-    roundUnsubs.push(base.collection('players').where('round', '==', r).onSnapshot(function (qs) {
+    roundUnsubs.push(sref.collection('players').where('round', '==', r).onSnapshot(function (list) {
       players = {};
-      qs.forEach(function (doc) { players[doc.id] = doc.data(); });
+      list.forEach(function (doc) { players[doc.id] = doc.data(); });
       render();
     }, fail));
-    roundUnsubs.push(base.collection('answers').where('round', '==', r).onSnapshot(function (qs) {
+    roundUnsubs.push(sref.collection('answers').where('round', '==', r).onSnapshot(function (list) {
       answers = {};
-      qs.forEach(function (doc) {
+      list.forEach(function (doc) {
         var a = doc.data({ serverTimestamps: 'estimate' });
         (answers[a.q] = answers[a.q] || {})[a.uid] = {
           choice: a.choice, name: a.name, at: a.at && a.at.toMillis ? a.at.toMillis() : 0
@@ -316,57 +375,36 @@
     }, fail));
   }
 
-  function selectBranch(k) {
-    detach();
-    bKey = k;
-    session = { phase: 'waiting' }; players = {}; answers = {}; correctMap = {}; showQr = false;
-    questions = window.quizQuestions(cfg.branches[k]);
-    Array.prototype.forEach.call($('tabs').children, function (b) {
-      b.setAttribute('aria-selected', b.dataset.k === k ? 'true' : 'false');
-    });
-    var br = cfg.branches[k];
-    $('qrLink').textContent = viewerUrl();
-    drawQr($('qrBig'), 640);
-    drawQr($('qrSmall'), 240);
-    mountVideo(br);
-
-    var box = $('correctBox');
-    box.innerHTML = '';
-    questions.forEach(function (q, i) {
-      var sel = el('select');
-      sel.id = 'correct-q' + i;
-      sel.setAttribute('aria-label', 'ข้อที่ถูกของข้อ ' + (i + 1));
-      sel.style.cssText = 'width:auto; flex:1; min-width:110px';
-      sel.appendChild(new Option((questions.length > 1 ? 'ข้อ ' + (i + 1) + ': ' : '') + 'ยังไม่ได้ตั้ง', ''));
-      q.options.forEach(function (o) {
-        sel.appendChild(new Option((questions.length > 1 ? 'ข้อ ' + (i + 1) + ': ' : 'ข้อ ') + o.key, o.key));
-      });
-      sel.addEventListener('change', function () {
-        var c = {};
-        c['q' + i] = sel.value || firebase.firestore.FieldValue.delete();
-        db.collection('private').doc(bKey).set({ correct: c }, { merge: true }).catch(fail);
-      });
-      box.appendChild(sel);
+  function start() {
+    buildTabs();
+    // เฉลยตายตัวจากไฟล์ quiz-answers.js
+    order.forEach(function (b) {
+      qs(b).forEach(function (q, i) { if (KEY[b] && KEY[b][i]) correctMap[keyOf(b, i)] = KEY[b][i]; });
     });
     $('secondsSel').value = String(cfg.answerSeconds);
     if (!$('secondsSel').value) $('secondsSel').value = '20';
-    showError('ctrlError', '');
+    $('qrLink').textContent = viewerUrl();
+    drawQr($('qrBig'), 640);
+    drawQr($('qrSmall'), 240);
+    setBranch(bKey, false);
 
-    var sref = db.collection('sessions').doc(k);
+    var first = true;
     unsubs.push(sref.onSnapshot(function (snap) {
       var d = snap.exists ? snap.data({ serverTimestamps: 'estimate' }) : null;
       if (!d || !d.round) {
-        // ยังไม่เคยใช้สาขานี้: สร้างรอบแรก
-        sref.set({ phase: 'waiting', round: newRound() }, { merge: true }).catch(fail);
+        // ยังไม่เคยใช้: สร้างรอบแรก เริ่มที่สาขาแรก
+        sref.set({ phase: 'waiting', round: newRound(), branch: order[0] }, { merge: true }).catch(fail);
         return;
       }
       session = {
         phase: d.phase || 'waiting',
-        qKey: d.qKey || 'q0',
+        branch: d.branch || '',
+        qKey: d.qKey || '',
         openedAt: d.openedAt && d.openedAt.toMillis ? d.openedAt.toMillis() : 0,
         duration: d.duration || cfg.answerSeconds,
         correct: d.correct || null,
         revealed: d.revealed || {},
+        final: !!d.final,
         round: d.round
       };
       if (pendingOpen && session.phase === 'open' && !snap.metadata.hasPendingWrites) {
@@ -374,18 +412,15 @@
         offset = session.openedAt - (pendingOpen + Date.now()) / 2;
         pendingOpen = null;
       }
-      if (session.round !== listenRound) watchRound(k, session.round);
+      if (first) {
+        // เปิดหน้าใหม่กลางงาน: กลับไปที่สาขาที่เล่นค้างอยู่
+        first = false;
+        if (session.branch && cfg.branches[session.branch] && session.branch !== bKey) setBranch(session.branch, false);
+      }
+      if (session.round !== listenRound) watchRound(session.round);
       render();
     }, fail));
-    unsubs.push(db.collection('private').doc(k).onSnapshot(function (snap) {
-      correctMap = (snap.exists && snap.data().correct) || {};
-      questions.forEach(function (q, i) {
-        var sel = $('correct-q' + i);
-        if (sel) sel.value = correctMap['q' + i] || '';
-      });
-      render();
-    }, fail));
-    render();
+
   }
 
   // ---------- ปุ่มควบคุม ----------
@@ -398,48 +433,67 @@
     render();
   });
 
-  function openQuestion(index) {
+  function openQuestion(b, index) {
     showError('ctrlError', '');
     if (media) media.pause();
     pendingOpen = Date.now();
-    return db.collection('sessions').doc(bKey).set({
+    return sref.set({
       phase: 'open',
-      qKey: 'q' + index,
+      branch: b,
+      qKey: keyOf(b, index),
       correct: null,
+      final: false,
       openedAt: firebase.firestore.FieldValue.serverTimestamp(),
       duration: Number($('secondsSel').value)
     }, { merge: true }).catch(fail);
   }
-  $('startBtn').addEventListener('click', function () { openQuestion(0); });
+
+  $('startBtn').addEventListener('click', function () {
+    var i = nextIndex(bKey);
+    if (i >= 0) { openQuestion(bKey, i); return; }
+    if (cfg.branches[bKey].discussion && !qs(bKey).length) {
+      // สาขาอภิปราย: แสดงคำถามบนจอและมือถือ ไม่มีการกดตอบ
+      if (media) media.pause();
+      sref.set({ phase: 'discuss', branch: bKey, final: false }, { merge: true }).catch(fail);
+    }
+  });
+
+  // ปุ่มเดียวทำ 2 หน้าที่: ข้อถัดไปในสาขาเดิม หรือไปสาขาถัดไปเมื่อถามครบ
   $('nextBtn').addEventListener('click', function () {
-    if (curIndex() < questions.length - 1) openQuestion(curIndex() + 1);
+    var i = nextIndex(bKey);
+    if (session.phase === 'reveal' && i >= 0) { openQuestion(bKey, i); return; }
+    var nb = nextBranch(bKey);
+    if (nb) setBranch(nb, true);
   });
 
   function closeRound() {
-    return db.collection('sessions').doc(bKey).set({ phase: 'closed' }, { merge: true }).catch(fail);
+    return sref.set({ phase: 'closed' }, { merge: true }).catch(fail);
   }
   $('closeBtn').addEventListener('click', closeRound);
 
   $('revealBtn').addEventListener('click', function () {
-    var key = curKey(), c = correctMap[key];
+    var key = session.qKey, p = parseKey(key), c = correctMap[key];
+    if (!p) return;
     if (!c) {
-      showError('ctrlError', 'ตั้ง "ข้อที่ถูก" ของข้อ ' + (curIndex() + 1) + ' ในส่วนตั้งค่าด้านล่างก่อนกดเฉลย');
-      $('settings').open = true;
+      showError('ctrlError', 'ไม่พบเฉลยของ ' + p.b + ' ข้อ ' + (p.i + 1) + ' ในไฟล์ quiz-answers.js');
       return;
     }
     showError('ctrlError', '');
     var rev = {};
-    rev[key] = { correct: c, openedAt: session.openedAt || 0, duration: session.duration || 1 };
-    db.collection('sessions').doc(bKey).set({ phase: 'reveal', correct: c, revealed: rev }, { merge: true }).catch(fail);
+    rev[key] = { correct: c, openedAt: session.openedAt || 0, duration: session.duration || 1, scored: isScored(p.b) };
+    // คิด 10 อันดับแรกรวมข้อนี้ด้วย ส่งให้มือถือแสดงอันดับของตัวเอง
+    var all = {};
+    Object.keys(session.revealed).forEach(function (k) { all[k] = session.revealed[k]; });
+    all[key] = rev[key];
+    var top = totals(all).slice(0, 10).map(function (r) { return { uid: r.uid, name: r.name, score: r.score }; });
+    sref.set({ phase: 'reveal', correct: c, revealed: rev, top: top, final: key === lastScoredKey() }, { merge: true }).catch(fail);
   });
 
   $('resetBtn').addEventListener('click', function () {
-    if (!confirm('เริ่มรอบใหม่ของสาขา ' + bKey + '? คำตอบและคะแนนของรอบนี้จะไม่แสดงอีก')) return;
-    showError('ctrlError', '');
-    showQr = false;
-    if (media) media.restart();
+    if (!confirm('เริ่มรอบใหม่ทั้งงาน? คะแนนสะสมของทุกสาขาจะถูกล้าง และกลับไปเริ่มที่สาขา ' + order[0])) return;
     // เปลี่ยนรหัสรอบ: ข้อมูลรอบเก่าไม่ถูกนับอีก และมือถือที่ยังเปิดอยู่จะกลับมาลงชื่อในรอบใหม่เอง
-    db.collection('sessions').doc(bKey).set({ phase: 'waiting', round: newRound() }).catch(fail);
+    sref.set({ phase: 'waiting', round: newRound(), branch: order[0] }).catch(fail);
+    setBranch(order[0], false);
   });
 
   $('fullBtn').addEventListener('click', function () {
@@ -450,34 +504,52 @@
 
   // ---------- แสดงผลเรียลไทม์ ----------
   function render() {
-    var br = cfg.branches[bKey];
-    var phase = session.phase || 'waiting';
+    var phase = session.phase;
+    var p = parseKey(session.qKey);
+    var disc = cfg.branches[bKey].discussion;
+    var discOnly = !!disc && !qs(bKey).length;
+    if (phase === 'discuss' && !discOnly) phase = 'waiting';
+    if (!p && phase !== 'waiting' && phase !== 'discuss') phase = 'waiting';
     $('phase').textContent = PHASE_LABEL[phase] || phase;
     $('phase').className = 'phase ' + phase;
 
     var joined = Object.keys(players).length;
-    var key = curKey(), idx = curIndex(), q = questions[idx];
-    var cur = answers[key] || {};
-    var aIds = Object.keys(cur);
-    var last = idx >= questions.length - 1;
     $('joinedBig').textContent = joined;
 
     // เลือกว่าจอฉายแสดงอะไร
-    var mode = phase !== 'waiting' ? 'live' : (showQr ? 'qr' : 'video');
+    var mode = phase === 'discuss' ? 'discuss' : phase !== 'waiting' ? 'live' : (showQr ? 'qr' : 'video');
     $('videoBox').hidden = mode !== 'video';
     $('qrBox').hidden = mode !== 'qr';
     $('liveBox').hidden = mode !== 'live';
+    $('discussBox').hidden = mode !== 'discuss';
+    if (mode === 'discuss') {
+      $('discussTitle').textContent = disc.title;
+      var ol = $('discussList');
+      ol.innerHTML = '';
+      disc.points.forEach(function (t) { ol.appendChild(el('li', null, t)); });
+    }
 
+    var ni = nextIndex(bKey), nb = nextBranch(bKey);
     $('qrBtn').disabled = phase !== 'waiting';
     $('qrBtn').textContent = showQr ? 'กลับไปดูคลิป' : 'แสดง QR';
-    $('startBtn').disabled = phase !== 'waiting';
+    $('startBtn').textContent = discOnly ? 'แสดงคำถามอภิปราย' : 'เปิดรับคำตอบ';
+    $('startBtn').disabled = !(phase === 'waiting' && (ni >= 0 || discOnly));
     $('closeBtn').disabled = phase !== 'open';
     $('revealBtn').disabled = !(phase === 'closed' || phase === 'open');
-    $('nextBtn').hidden = questions.length < 2;
-    $('nextBtn').disabled = !(phase === 'reveal' && !last);
+    if (phase === 'reveal' && ni >= 0) {
+      $('nextBtn').textContent = 'ข้อถัดไป';
+      $('nextBtn').disabled = false;
+    } else {
+      $('nextBtn').textContent = nb ? 'สาขาถัดไป: ' + nb : 'จบทุกสาขาแล้ว';
+      $('nextBtn').disabled = !(nb && ni < 0 && (phase === 'reveal' || phase === 'waiting'));
+    }
     if (mode !== 'live') return;
 
-    $('question').textContent = (questions.length > 1 ? 'ข้อ ' + (idx + 1) + ' จาก ' + questions.length + ': ' : '') + q.question;
+    var list = qs(p.b), q = list[p.i];
+    var cur = answers[session.qKey] || {};
+    var aIds = Object.keys(cur);
+    var rev = session.revealed[session.qKey];
+    $('question').textContent = p.b + (list.length > 1 ? ' ข้อ ' + (p.i + 1) + ' จาก ' + list.length : '') + ': ' + q.question;
     $('timer').hidden = phase !== 'open';
     $('qrSmall').hidden = phase !== 'open';
 
@@ -498,27 +570,14 @@
     });
 
     $('answered').textContent = phase === 'reveal'
-      ? 'ข้อที่ถูกคือ ' + session.correct
+      ? 'ข้อที่ถูกคือ ' + session.correct + (rev && rev.scored === false ? ' (ข้อนี้ไม่นับคะแนน)' : '')
       : 'ตอบแล้ว ' + aIds.length + ' จาก ' + Math.max(joined, aIds.length) + ' คน';
 
-    // ตารางคะแนนรวมทุกข้อที่เฉลยแล้ว แสดงหลังเฉลยเท่านั้น
+    // ตารางคะแนนรวมทุกสาขาที่เฉลยแล้ว แสดงหลังเฉลยเท่านั้น
     $('board').hidden = phase !== 'reveal';
     if (phase !== 'reveal') return;
-    $('scoreHead').textContent = questions.length > 1 ? (last ? 'คะแนนรวมสุดท้าย' : 'คะแนนรวม') : 'คะแนน';
-    var totals = {};
-    Object.keys(session.revealed || {}).forEach(function (k) {
-      var rev = session.revealed[k], list = answers[k] || {};
-      Object.keys(list).forEach(function (id) {
-        var a = list[id];
-        var t = totals[id] || (totals[id] = { name: a.name, score: 0, time: 0 });
-        if (a.choice === rev.correct) t.score += window.quizScore(a.at, rev.openedAt, rev.duration);
-        t.time += Math.max(0, a.at - rev.openedAt);
-      });
-    });
-    var rows = Object.keys(totals).map(function (id) { return totals[id]; })
-      .filter(function (r) { return r.score > 0; });
-    rows.sort(function (x, y) { return (y.score - x.score) || (x.time - y.time); });
-
+    $('scoreHead').textContent = session.final ? 'สรุปผลคะแนนรวม' : 'คะแนนรวม';
+    var rows = totals(session.revealed);
     var body = $('boardBody');
     body.innerHTML = '';
     if (!rows.length) {
