@@ -42,7 +42,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="quiz-config.js"></script>
 <script>
 (function () {
@@ -78,6 +78,7 @@
   var uid = null;
   var name = store.get('quiz-name') || '';
   var session = { phase: 'waiting' };
+  var round = null;        // รหัสรอบปัจจุบัน เปลี่ยนเมื่อผู้ดูแลกดเริ่มรอบใหม่
   var myAnswers = {};      // คำตอบของฉันแยกตามข้อ เช่น { q0: {...}, q1: {...} }
   var questions = window.quizQuestions(branch);
   function curKey() { return session.qKey || 'q0'; }
@@ -101,7 +102,7 @@
   // ---------- Firebase ----------
   try {
     firebase.initializeApp(cfg.firebase);
-    db = firebase.database();
+    db = firebase.firestore();
   } catch (e) {
     fatal('เชื่อมต่อระบบไม่ได้ ตรวจค่า firebase ในไฟล์ quiz-config.js');
     return;
@@ -119,25 +120,58 @@
     if (started) return;
     started = true;
     uid = user.uid;
-    db.ref('.info/serverTimeOffset').on('value', function (s) { offset = s.val() || 0; });
-    db.ref('sessions/' + bKey).on('value', function (s) {
-      session = s.val() || { phase: 'waiting' };
-      render();
-    });
-    questions.forEach(function (q, i) {
-      var key = 'q' + i;
-      db.ref('answers/' + bKey + '/' + key + '/' + uid).on('value', function (s) {
-        if (s.val()) myAnswers[key] = s.val(); else delete myAnswers[key];
+    db.collection('sessions').doc(bKey).onSnapshot(function (snap) {
+      session = normalize(snap.exists ? snap.data() : null);
+      if (session.round !== round) {
+        // รอบใหม่ (หรือเพิ่งเปิดหน้า): โหลดคำตอบที่เคยส่งในรอบนี้ และลงชื่อเข้าร่วมรอบนี้
+        round = session.round;
+        myAnswers = loadAnswers(round);
         sending = false;
-        render();
-      });
+        if (name && round) registerPlayer();
+      }
+      render();
+    }, function () {
+      fatal('เชื่อมต่อฐานข้อมูลไม่ได้ ลองรีเฟรชหน้านี้');
     });
-    if (name) registerPlayer();
     render();
   });
 
+  // แปลงข้อมูลรอบจาก Firestore ให้ใช้ง่าย (เวลาเป็นมิลลิวินาที)
+  function normalize(d) {
+    d = d || {};
+    return {
+      phase: d.phase || 'waiting',
+      qKey: d.qKey || 'q0',
+      openedAt: d.openedAt && d.openedAt.toMillis ? d.openedAt.toMillis() : 0,
+      duration: d.duration || cfg.answerSeconds,
+      correct: d.correct || null,
+      revealed: d.revealed || {},
+      round: d.round || ''
+    };
+  }
+
+  // คำตอบที่ส่งแล้วเก็บไว้ในเครื่อง เพื่อไม่ต้องอ่านจากฐานข้อมูลซ้ำ
+  var ANS_KEY = 'quiz-ans-' + bKey;
+  function loadAnswers(r) {
+    try {
+      var saved = JSON.parse(store.get(ANS_KEY) || 'null');
+      return saved && saved.round === r ? saved.answers : {};
+    } catch (e) { return {}; }
+  }
+  function saveAnswers() { store.set(ANS_KEY, JSON.stringify({ round: round, answers: myAnswers })); }
+
   function registerPlayer() {
-    db.ref('players/' + bKey + '/' + uid).update({ name: name });
+    if (!uid || !round) return;
+    var ref = db.collection('sessions').doc(bKey).collection('players').doc(uid);
+    var t0 = Date.now();
+    ref.set({ name: name, round: round, joinedAt: firebase.firestore.FieldValue.serverTimestamp() })
+      .then(function () { return ref.get({ source: 'server' }); })
+      .then(function (snap) {
+        // ใช้เวลาที่เซิร์ฟเวอร์บันทึก ปรับนาฬิกานับถอยหลังของเครื่องนี้ให้ตรงกับเซิร์ฟเวอร์
+        var t = snap.data() && snap.data().joinedAt;
+        if (t && t.toMillis) offset = t.toMillis() - (t0 + Date.now()) / 2;
+      })
+      .catch(function () {});
   }
 
   // ---------- ใส่ชื่อ ----------
@@ -151,7 +185,7 @@
     }
     name = v;
     store.set('quiz-name', name);
-    if (uid) registerPlayer();
+    registerPlayer();
     render();
   }
   $('joinBtn').addEventListener('click', join);
@@ -196,18 +230,34 @@
   }
 
   function submit(key) {
-    if (sending || mine() || !uid) return;
+    if (sending || mine() || !uid || !round) return;
     sending = true;
     render();
-    db.ref('answers/' + bKey + '/' + curKey() + '/' + uid).set({
-      choice: key,
-      name: name,
-      at: firebase.database.ServerValue.TIMESTAMP
+    var q = curKey(), r = round;
+    var ref = db.collection('sessions').doc(bKey).collection('answers').doc(r + '_' + q + '_' + uid);
+    var sentAt = now();
+    ref.set({
+      round: r, q: q, uid: uid, choice: key, name: name,
+      at: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function () {
+      // บันทึกสำเร็จ: จำคำตอบไว้ในเครื่อง แล้วขอเวลาที่เซิร์ฟเวอร์บันทึกจริงเพื่อคิดคะแนนให้ตรงกับจอ
+      if (r !== round) return;
+      myAnswers[q] = { choice: key, at: sentAt };
+      saveAnswers();
+      sending = false;
+      render();
+      return ref.get({ source: 'server' }).then(function (snap) {
+        var t = snap.data() && snap.data().at;
+        if (t && t.toMillis && r === round && myAnswers[q]) {
+          myAnswers[q].at = t.toMillis();
+          saveAnswers();
+          render();
+        }
+      }).catch(function () {});
     }).catch(function () {
       sending = false;
       render();
-      var s = $('stage');
-      s.appendChild(el('div', 'error', 'ส่งคำตอบไม่ได้ อาจหมดเวลาหรือสัญญาณหลุด ลองกดอีกครั้ง'));
+      $('stage').appendChild(el('div', 'error', 'ส่งคำตอบไม่ได้ อาจหมดเวลาหรือสัญญาณหลุด ลองกดอีกครั้ง'));
     });
   }
 
